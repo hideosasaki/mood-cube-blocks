@@ -1,0 +1,9 @@
+built/
+node_modules/
+pxt_modules/
+yotta_modules/
+yotta_targets/
+*.db
+*.tgz
+.header.json
+.DS_Store
