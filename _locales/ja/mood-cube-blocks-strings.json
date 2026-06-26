@@ -1,24 +1,24 @@
 {
-    "cubeTouch.surface|block": "上面",
-    "cubeTouch.onSurfaceChange|block": "上面が変わったとき",
+    "cubeTouch.surface|block": "触感キューブ上面",
+    "cubeTouch.onSurfaceChange|block": "触感キューブ上面が変わったとき",
     "cubeTouch.onPinStuck|block": "ピンが刺さったとき",
     "cubeTouch.onPinReleased|block": "ピンが抜けたとき",
 
     "cubeGrip.strength|block": "握りの強さ",
     "cubeGrip.onGripStart|block": "握り始めたとき",
     "cubeGrip.onRelease|block": "握りを離したとき",
-    "cubeGrip.onMaxReached|block": "最大に達したとき",
-    "cubeGrip.onMaxReleased|block": "最大から外れたとき",
+    "cubeGrip.onMaxReached|block": "握りが最大に達したとき",
+    "cubeGrip.onMaxReleased|block": "握りが最大から外れたとき",
 
-    "cubeLight.setColor|block": "色を %color=neopixel_colors にする",
-    "cubeLight.setBrightness|block": "明るさを %level にする",
+    "cubeLight.setColor|block": "カラーLEDを %color=neopixel_colors にする",
+    "cubeLight.setBrightness|block": "カラーLEDの明るさを %level にする",
 
     "cubeVibe.pulse|block": "強さ %strength で %ms ミリ秒振動する",
     "cubeVibe.start|block": "強さ %strength で振動を始める",
     "cubeVibe.stop|block": "振動を止める",
 
     "cubePair.setRole|block": "このキューブは %role",
-    "cubePair.setGroup|block": "ペアグループを %id にする",
+    "cubePair.setGroup|block": "キューブペアグループを %id にする",
 
     "CubeFace.Face0|block": "面 0",
     "CubeFace.Face1|block": "面 1",
