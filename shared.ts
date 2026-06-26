@@ -34,4 +34,12 @@ namespace cubeInternal {
     export const EVT_SRC_GRIP_RELEASE = 0xCB05
     export const EVT_SRC_GRIP_MAX_REACHED = 0xCB06
     export const EVT_SRC_GRIP_MAX_RELEASED = 0xCB07
+
+    export const MSG_TOUCH_SURFACE = "ts"
+    export const MSG_TOUCH_PIN = "tp"
+    export const MSG_GRIP_EVENT = "ge"
+    export const MSG_QUERY_SURFACE = "qs"
+    export const MSG_QUERY_GRIP = "qg"
+    export const MSG_RESP_SURFACE = "rs"
+    export const MSG_RESP_GRIP = "rg"
 }

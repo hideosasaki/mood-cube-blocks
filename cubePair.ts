@@ -1,6 +1,7 @@
 //% color="#2A9D8F" weight=206 icon="\uf0c1" block="キューブペア"
 namespace cubePair {
     const REQ_TIMEOUT_MS = 80
+    const RADIO_POWER_MAX = 7
 
     let _pendingReq: number = -1
     let _pendingResp: number = -1
@@ -28,7 +29,7 @@ namespace cubePair {
         if (_radioInit) return
         _radioInit = true
         radio.setGroup(cubeInternal.group)
-        radio.setTransmitPower(7)
+        radio.setTransmitPower(RADIO_POWER_MAX)
         radio.onReceivedValue(function (name: string, value: number) {
             onPacket(name, value)
         })
@@ -36,17 +37,17 @@ namespace cubePair {
 
     function onPacket(name: string, value: number): void {
         if (cubeInternal.role === cubeInternal.ROLE_UNSET) return
-        if (name === "ts" && cubeInternal.role === CubeRole.Grip) {
+        if (name === cubeInternal.MSG_TOUCH_SURFACE && cubeInternal.role === CubeRole.Grip) {
             cubeTouch._raiseRemoteSurface(value)
-        } else if (name === "tp" && cubeInternal.role === CubeRole.Grip) {
+        } else if (name === cubeInternal.MSG_TOUCH_PIN && cubeInternal.role === CubeRole.Grip) {
             cubeTouch._raiseRemotePin(Math.idiv(value, 10), (value % 10) === 1)
-        } else if (name === "ge" && cubeInternal.role === CubeRole.Touch) {
+        } else if (name === cubeInternal.MSG_GRIP_EVENT && cubeInternal.role === CubeRole.Touch) {
             cubeGrip._raiseRemoteGripEvent(value)
-        } else if (name === "qs" && cubeInternal.role === CubeRole.Touch) {
-            radio.sendValue("rs", (value << 8) | cubeTouch._localSurface())
-        } else if (name === "qg" && cubeInternal.role === CubeRole.Grip) {
-            radio.sendValue("rg", (value << 8) | cubeGrip._localStrength())
-        } else if (name === "rs" || name === "rg") {
+        } else if (name === cubeInternal.MSG_QUERY_SURFACE && cubeInternal.role === CubeRole.Touch) {
+            radio.sendValue(cubeInternal.MSG_RESP_SURFACE, (value << 8) | cubeTouch._localSurface())
+        } else if (name === cubeInternal.MSG_QUERY_GRIP && cubeInternal.role === CubeRole.Grip) {
+            radio.sendValue(cubeInternal.MSG_RESP_GRIP, (value << 8) | cubeGrip._localStrength())
+        } else if (name === cubeInternal.MSG_RESP_SURFACE || name === cubeInternal.MSG_RESP_GRIP) {
             if ((value >> 8) === _pendingReq) {
                 _pendingResp = value & 0xff
             }
@@ -75,29 +76,29 @@ namespace cubePair {
     }
 
     export function requestSurface(): number {
-        return request(CubeRole.Grip, "qs")
+        return request(CubeRole.Grip, cubeInternal.MSG_QUERY_SURFACE)
     }
 
     export function requestStrength(): number {
-        return request(CubeRole.Touch, "qg")
+        return request(CubeRole.Touch, cubeInternal.MSG_QUERY_GRIP)
     }
 
     export function _broadcastSurface(face: number): void {
         if (cubeInternal.role !== CubeRole.Touch) return
         ensureRadio()
-        radio.sendValue("ts", face)
+        radio.sendValue(cubeInternal.MSG_TOUCH_SURFACE, face)
     }
 
     export function _broadcastPin(face: number, stuck: boolean): void {
         if (cubeInternal.role !== CubeRole.Touch) return
         ensureRadio()
-        radio.sendValue("tp", face * 10 + (stuck ? 1 : 0))
+        radio.sendValue(cubeInternal.MSG_TOUCH_PIN, face * 10 + (stuck ? 1 : 0))
     }
 
     export function _broadcastGripEvent(src: number): void {
         if (cubeInternal.role !== CubeRole.Grip) return
         if (src < cubeInternal.EVT_SRC_GRIP_START || src > cubeInternal.EVT_SRC_GRIP_MAX_RELEASED) return
         ensureRadio()
-        radio.sendValue("ge", src)
+        radio.sendValue(cubeInternal.MSG_GRIP_EVENT, src)
     }
 }

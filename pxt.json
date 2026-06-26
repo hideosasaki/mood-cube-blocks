@@ -2,7 +2,7 @@
     "name": "mood-cube-blocks",
     "version": "0.0.1",
     "description": "micro:bit v2 用 MakeCode 拡張機能。フィジェット作品「mood cube」のハードウェア抽象層を提供する。",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "files": [
         "shared.ts",
         "cubeTouch.ts",
