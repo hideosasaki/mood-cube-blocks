@@ -3,6 +3,11 @@
     "version": "0.0.1",
     "description": "micro:bit v2 用 MakeCode 拡張機能。フィジェット作品「mood cube」のハードウェア抽象層を提供する。",
     "license": "Apache-2.0",
+    "dependencies": {
+        "core": "*",
+        "radio": "*",
+        "neopixel": "github:microsoft/pxt-neopixel"
+    },
     "files": [
         "shared.ts",
         "cubeTouch.ts",
@@ -17,13 +22,8 @@
     "testFiles": [
         "test.ts"
     ],
-    "dependencies": {
-        "core": "*",
-        "radio": "*",
-        "neopixel": "github:microsoft/pxt-neopixel"
-    },
+    "public": true,
     "supportedTargets": [
         "microbit"
-    ],
-    "public": true
+    ]
 }

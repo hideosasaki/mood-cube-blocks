@@ -8,3 +8,7 @@ yotta_targets/
 .header.json
 .DS_Store
 .vscode/
+
+# pxt target microbit が npm install で生成する副産物
+package.json
+package-lock.json

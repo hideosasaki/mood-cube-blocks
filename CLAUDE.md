@@ -6,6 +6,10 @@ micro:bit v2 用 MakeCode 拡張機能。フィジェット作品「mood cube」
 
 要件は [docs/requirements.md](docs/requirements.md) に集約する。設計判断・スコープ・公開する機能の粒度はすべてここに書く。新しいセッションで作業を始めるときも、実装や設計の議論はこのファイルを起点にする。要件文書に書かれていないことを推測で実装しない。
 
+## 開発フロー
+
+ローカル開発環境の構築、blocksエディタとの同期手順、関連リポジトリ (grip / touch / blocks-test) の触り方は [docs/development.md](docs/development.md) にまとめる。`main.ts`を直接編集してpushするとblocks表示が壊れる等の落とし穴があるので、ts編集前に必ず参照する。
+
 ## 開発の前提
 
 - ターゲットは micro:bit v2 のみ
