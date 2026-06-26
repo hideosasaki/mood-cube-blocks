@@ -1,4 +1,4 @@
-//% color="#2A9D8F" weight=96 icon="" block="cube pair"
+//% color="#2A9D8F" weight=96 icon="\uf0c1"
 namespace cubePair {
     const REQ_TIMEOUT_MS = 80
 
@@ -16,7 +16,7 @@ namespace cubePair {
     }
 
     //% blockId=cubePair_setGroup block="set pair group %id"
-    //% id.min=0 id.max=255 id.defl=42
+    //% id.min=0 id.max=255 id.defl=156
     export function setGroup(id: number): void {
         if (id < 0) id = 0
         if (id > 255) id = 255

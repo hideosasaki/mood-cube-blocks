@@ -10,7 +10,8 @@
         "cubeLight.ts",
         "cubeVibe.ts",
         "cubePair.ts",
-        "README.md"
+        "README.md",
+        "_locales/ja/mood-cube-blocks-strings.json"
     ],
     "testFiles": [
         "test.ts"

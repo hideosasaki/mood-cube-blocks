@@ -1,4 +1,4 @@
-//% color="#FF8C42" weight=100 icon="" block="cube touch"
+//% color="#FF8C42" weight=100 icon="\uf25a"
 namespace cubeTouch {
     let _surface: CubeFace = CubeFace.Face0
     let _candidate: CubeFace = CubeFace.Face0

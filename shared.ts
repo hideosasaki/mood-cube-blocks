@@ -22,7 +22,7 @@ enum CubeRole {
 
 namespace cubeInternal {
     export const ROLE_UNSET = 0
-    export const DEFAULT_GROUP = 42
+    export const DEFAULT_GROUP = 156
 
     export let role: number = ROLE_UNSET
     export let group: number = DEFAULT_GROUP
