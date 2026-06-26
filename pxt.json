@@ -1,0 +1,27 @@
+{
+    "name": "mood-cube-blocks",
+    "version": "0.0.1",
+    "description": "micro:bit v2 用 MakeCode 拡張機能。フィジェット作品「mood cube」のハードウェア抽象層を提供する。",
+    "license": "MIT",
+    "files": [
+        "shared.ts",
+        "cubeTouch.ts",
+        "cubeGrip.ts",
+        "cubeLight.ts",
+        "cubeVibe.ts",
+        "cubePair.ts",
+        "README.md"
+    ],
+    "testFiles": [
+        "test.ts"
+    ],
+    "dependencies": {
+        "core": "*",
+        "radio": "*",
+        "neopixel": "github:microsoft/pxt-neopixel"
+    },
+    "supportedTargets": [
+        "microbit"
+    ],
+    "public": true
+}
