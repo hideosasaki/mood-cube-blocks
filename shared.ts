@@ -1,6 +1,4 @@
 enum CubeFace {
-    //% block="face 0"
-    Face0 = 0,
     //% block="face 1"
     Face1 = 1,
     //% block="face 2"
@@ -10,7 +8,9 @@ enum CubeFace {
     //% block="face 4"
     Face4 = 4,
     //% block="face 5"
-    Face5 = 5
+    Face5 = 5,
+    //% block="face 6"
+    Face6 = 6
 }
 
 enum CubeRole {

@@ -1,7 +1,7 @@
 //% color="#FF8C42" weight=210 icon="\uf25a" block="キューブ触感"
 namespace cubeTouch {
-    let _surface: CubeFace = CubeFace.Face0
-    let _candidate: CubeFace = CubeFace.Face0
+    let _surface: CubeFace = CubeFace.Face1
+    let _candidate: CubeFace = CubeFace.Face1
     let _candidateSince: number = 0
     let _initialized = false
     let _pinState = 1
@@ -11,7 +11,7 @@ namespace cubeTouch {
     export function surface(): number {
         if (cubeInternal.role === CubeRole.Touch) return _surface
         if (cubeInternal.role === CubeRole.Grip) return cubePair.requestSurface()
-        return CubeFace.Face0
+        return CubeFace.Face1
     }
 
     //% blockId=cubeTouch_onSurfaceChange block="on surface changed"
@@ -75,10 +75,10 @@ namespace cubeTouch {
         else second = ax > ay ? ax : ay
         if (maxVal - second < 200) return
 
-        let candidate = CubeFace.Face0
-        if (maxAxis === 0) candidate = x > 0 ? CubeFace.Face0 : CubeFace.Face1
-        else if (maxAxis === 1) candidate = y > 0 ? CubeFace.Face2 : CubeFace.Face3
-        else candidate = z > 0 ? CubeFace.Face4 : CubeFace.Face5
+        let candidate = CubeFace.Face1
+        if (maxAxis === 0) candidate = x > 0 ? CubeFace.Face3 : CubeFace.Face4
+        else if (maxAxis === 1) candidate = y > 0 ? CubeFace.Face2 : CubeFace.Face5
+        else candidate = z > 0 ? CubeFace.Face6 : CubeFace.Face1
 
         const now = input.runningTime()
         if (candidate !== _candidate) {
@@ -114,13 +114,13 @@ namespace cubeTouch {
     }
 
     export function _raiseRemoteSurface(face: number): void {
-        if (face < 0 || face > 5) return
+        if (face < 1 || face > 6) return
         _surface = face
         control.raiseEvent(cubeInternal.EVT_SRC_SURFACE, face)
     }
 
     export function _raiseRemotePin(face: number, stuck: boolean): void {
-        if (face < 0 || face > 5) return
+        if (face < 1 || face > 6) return
         const src = stuck ? cubeInternal.EVT_SRC_PIN_STUCK : cubeInternal.EVT_SRC_PIN_RELEASED
         control.raiseEvent(src, face)
     }

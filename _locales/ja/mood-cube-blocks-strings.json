@@ -20,12 +20,12 @@
     "cubePair.setRole|block": "このキューブは %role",
     "cubePair.setGroup|block": "キューブペアグループを %id にする",
 
-    "CubeFace.Face0|block": "面 0",
     "CubeFace.Face1|block": "面 1",
     "CubeFace.Face2|block": "面 2",
     "CubeFace.Face3|block": "面 3",
     "CubeFace.Face4|block": "面 4",
     "CubeFace.Face5|block": "面 5",
+    "CubeFace.Face6|block": "面 6",
 
     "CubeRole.Touch|block": "触感",
     "CubeRole.Grip|block": "握り"
