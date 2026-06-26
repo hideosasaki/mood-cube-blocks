@@ -1,4 +1,10 @@
 {
+    "{id:category}cubeTouch": "キューブ触感",
+    "{id:category}cubeGrip": "キューブ握り",
+    "{id:category}cubeLight": "キューブ発光",
+    "{id:category}cubeVibe": "キューブ振動",
+    "{id:category}cubePair": "キューブペア連動",
+
     "cubeTouch": "キューブ触感",
     "cubeGrip": "キューブ握り",
     "cubeLight": "キューブ発光",

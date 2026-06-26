@@ -1,0 +1,5 @@
+{
+    "cubeTouch.onSurfaceChange|param|face": "面",
+    "cubeTouch.onPinStuck|param|face": "面",
+    "cubeTouch.onPinReleased|param|face": "面"
+}
