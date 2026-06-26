@@ -1,4 +1,4 @@
-//% color="#FFD23F" weight=108 icon="\uf0eb"
+//% color="#FFD23F" weight=208 icon="\uf0eb" block="cubeLight"
 namespace cubeLight {
     let _strip: neopixel.Strip = null
     let _color: number = NeoPixelColors.Black

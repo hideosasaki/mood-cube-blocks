@@ -1,4 +1,4 @@
-//% color="#2A9D8F" weight=106 icon="\uf0c1"
+//% color="#2A9D8F" weight=206 icon="\uf0c1" block="cubePair"
 namespace cubePair {
     const REQ_TIMEOUT_MS = 80
 
