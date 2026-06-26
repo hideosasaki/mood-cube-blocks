@@ -1,4 +1,4 @@
-//% color="#E63946" weight=209 icon="\uf255" block="cubeGrip"
+//% color="#E63946" weight=209 icon="\uf255" block="キューブ握り"
 namespace cubeGrip {
     const RAW_ZERO_MAX_DEFAULT = 80
     const RAW_FULL = 900

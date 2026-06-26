@@ -1,4 +1,4 @@
-//% color="#6A4C93" weight=207 icon="\uf0f3" block="cubeVibe"
+//% color="#6A4C93" weight=207 icon="\uf0f3" block="キューブ振動"
 namespace cubeVibe {
     let _initialized = false
 

@@ -1,16 +1,4 @@
 {
-    "{id:category}cubeTouch": "キューブ触感",
-    "{id:category}cubeGrip": "キューブ握り",
-    "{id:category}cubeLight": "キューブ発光",
-    "{id:category}cubeVibe": "キューブ振動",
-    "{id:category}cubePair": "キューブペア連動",
-
-    "cubeTouch": "キューブ触感",
-    "cubeGrip": "キューブ握り",
-    "cubeLight": "キューブ発光",
-    "cubeVibe": "キューブ振動",
-    "cubePair": "キューブペア連動",
-
     "cubeTouch.surface|block": "上面",
     "cubeTouch.onSurfaceChange|block": "上面が変わったとき",
     "cubeTouch.onPinStuck|block": "ピンが刺さったとき",
@@ -22,7 +10,7 @@
     "cubeGrip.onMaxReached|block": "最大に達したとき",
     "cubeGrip.onMaxReleased|block": "最大から外れたとき",
 
-    "cubeLight.setColor|block": "色を %color にする",
+    "cubeLight.setColor|block": "色を %color=neopixel_colors にする",
     "cubeLight.setBrightness|block": "明るさを %level にする",
 
     "cubeVibe.pulse|block": "強さ %strength で %ms ミリ秒振動する",
