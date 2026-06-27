@@ -49,7 +49,9 @@ namespace cubePair {
             radio.sendValue(cubeInternal.MSG_RESP_SURFACE, (value << 8) | cubeTouch._localSurface())
         } else if (name === cubeInternal.MSG_QUERY_GRIP && cubeInternal.role === CubeRole.Grip) {
             radio.sendValue(cubeInternal.MSG_RESP_GRIP, (value << 8) | cubeGrip._localStrength())
-        } else if (name === cubeInternal.MSG_RESP_SURFACE || name === cubeInternal.MSG_RESP_GRIP) {
+        } else if (name === cubeInternal.MSG_QUERY_PIN && cubeInternal.role === CubeRole.Touch) {
+            radio.sendValue(cubeInternal.MSG_RESP_PIN, (value << 8) | (cubeTouch._localPinStuck() ? 1 : 0))
+        } else if (name === cubeInternal.MSG_RESP_SURFACE || name === cubeInternal.MSG_RESP_GRIP || name === cubeInternal.MSG_RESP_PIN) {
             if ((value >> 8) === _pendingReq) {
                 _pendingResp = value & 0xff
             }
@@ -83,6 +85,10 @@ namespace cubePair {
 
     export function requestStrength(): number {
         return request(CubeRole.Touch, cubeInternal.MSG_QUERY_GRIP)
+    }
+
+    export function requestPinStuck(): boolean {
+        return request(CubeRole.Grip, cubeInternal.MSG_QUERY_PIN) === 1
     }
 
     export function _broadcastSurface(face: number): void {

@@ -43,4 +43,6 @@ namespace cubeInternal {
     export const MSG_QUERY_GRIP = "qg"
     export const MSG_RESP_SURFACE = "rs"
     export const MSG_RESP_GRIP = "rg"
+    export const MSG_QUERY_PIN = "qp"
+    export const MSG_RESP_PIN = "rp"
 }

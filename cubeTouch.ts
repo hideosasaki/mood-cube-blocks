@@ -10,12 +10,20 @@ namespace cubeTouch {
     let _candidate: CubeFace = CubeFace.Face1
     let _candidateSince: number = 0
     let _initialized = false
+    let _pinStuck: boolean = false
 
     //% blockId=cubeTouch_surface block="surface"
     export function surface(): number {
         if (cubeInternal.role === CubeRole.Touch) return _surface
         if (cubeInternal.role === CubeRole.Grip) return cubePair.requestSurface()
         return CubeFace.Face1
+    }
+
+    //% blockId=cubeTouch_pinStuck block="pin stuck"
+    export function pinStuck(): boolean {
+        if (cubeInternal.role === CubeRole.Touch) return _pinStuck
+        if (cubeInternal.role === CubeRole.Grip) return cubePair.requestPinStuck()
+        return false
     }
 
     //% blockId=cubeTouch_onSurfaceChange block="on surface changed"
@@ -53,11 +61,13 @@ namespace cubeTouch {
         })
         input.onPinPressed(TouchPin.P0, function () {
             if (cubeInternal.role !== CubeRole.Touch) return
+            _pinStuck = true
             control.raiseEvent(cubeInternal.EVT_SRC_PIN_STUCK, _surface)
             cubePair._broadcastPin(_surface, true)
         })
         input.onPinReleased(TouchPin.P0, function () {
             if (cubeInternal.role !== CubeRole.Touch) return
+            _pinStuck = false
             control.raiseEvent(cubeInternal.EVT_SRC_PIN_RELEASED, _surface)
             cubePair._broadcastPin(_surface, false)
         })
@@ -106,6 +116,10 @@ namespace cubeTouch {
         return _surface
     }
 
+    export function _localPinStuck(): boolean {
+        return _pinStuck
+    }
+
     export function _raiseRemoteSurface(face: number): void {
         if (face < 1 || face > 6) return
         _surface = face
@@ -114,6 +128,7 @@ namespace cubeTouch {
 
     export function _raiseRemotePin(face: number, stuck: boolean): void {
         if (face < 1 || face > 6) return
+        _pinStuck = stuck
         const src = stuck ? cubeInternal.EVT_SRC_PIN_STUCK : cubeInternal.EVT_SRC_PIN_RELEASED
         control.raiseEvent(src, face)
     }

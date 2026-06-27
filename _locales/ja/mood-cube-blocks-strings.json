@@ -1,5 +1,6 @@
 {
     "cubeTouch.surface|block": "触感キューブ上面",
+    "cubeTouch.pinStuck|block": "ピンが刺さっている",
     "cubeTouch.onSurfaceChange|block": "触感キューブ上面が変わったとき",
     "cubeTouch.onPinStuck|block": "ピンが刺さったとき",
     "cubeTouch.onPinReleased|block": "ピンが抜けたとき",
