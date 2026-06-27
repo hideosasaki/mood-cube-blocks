@@ -39,6 +39,14 @@ namespace cubeGrip {
         control.onEvent(cubeInternal.EVT_SRC_GRIP_MAX_RELEASED, 0, handler)
     }
 
+    //% blockId=cubeGrip_onChange block="on grip strength changed"
+    //% draggableParameters="reporter"
+    export function onChange(handler: (strength: number) => void): void {
+        control.onEvent(cubeInternal.EVT_SRC_GRIP_CHANGED, 0, function () {
+            handler(control.eventValue())
+        })
+    }
+
     export function _initAsGrip(): void {
         if (_initialized) return
         _initialized = true
@@ -114,24 +122,25 @@ namespace cubeGrip {
         emitTransitions(prev, _strength)
     }
 
-    function fire(src: number): void {
-        control.raiseEvent(src, 0)
-        cubePair._broadcastGripEvent(src)
+    function fire(src: number, strength: number): void {
+        control.raiseEvent(src, strength)
+        cubePair._broadcastGripEvent(src, strength)
     }
 
     function emitTransitions(prev: number, next: number): void {
-        if (prev === 0 && next >= 1) fire(cubeInternal.EVT_SRC_GRIP_START)
-        if (prev >= 1 && next === 0) fire(cubeInternal.EVT_SRC_GRIP_RELEASE)
-        if (prev < 9 && next === 9) fire(cubeInternal.EVT_SRC_GRIP_MAX_REACHED)
-        if (prev === 9 && next < 9) fire(cubeInternal.EVT_SRC_GRIP_MAX_RELEASED)
+        if (prev === 0 && next >= 1) fire(cubeInternal.EVT_SRC_GRIP_START, next)
+        if (prev >= 1 && next === 0) fire(cubeInternal.EVT_SRC_GRIP_RELEASE, next)
+        if (prev < 9 && next === 9) fire(cubeInternal.EVT_SRC_GRIP_MAX_REACHED, next)
+        if (prev === 9 && next < 9) fire(cubeInternal.EVT_SRC_GRIP_MAX_RELEASED, next)
+        fire(cubeInternal.EVT_SRC_GRIP_CHANGED, next)
     }
 
     export function _localStrength(): number {
         return _strength
     }
 
-    export function _raiseRemoteGripEvent(src: number): void {
-        if (src < cubeInternal.EVT_SRC_GRIP_START || src > cubeInternal.EVT_SRC_GRIP_MAX_RELEASED) return
-        control.raiseEvent(src, 0)
+    export function _raiseRemoteGripEvent(src: number, strength: number): void {
+        if (src < cubeInternal.EVT_SRC_GRIP_START || src > cubeInternal.EVT_SRC_GRIP_CHANGED) return
+        control.raiseEvent(src, strength)
     }
 }

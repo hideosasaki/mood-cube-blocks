@@ -42,7 +42,9 @@ namespace cubePair {
         } else if (name === cubeInternal.MSG_TOUCH_PIN && cubeInternal.role === CubeRole.Grip) {
             cubeTouch._raiseRemotePin(Math.idiv(value, 10), (value % 10) === 1)
         } else if (name === cubeInternal.MSG_GRIP_EVENT && cubeInternal.role === CubeRole.Touch) {
-            cubeGrip._raiseRemoteGripEvent(value)
+            const offset = value >> 4
+            const strength = value & 0x0f
+            cubeGrip._raiseRemoteGripEvent(cubeInternal.EVT_SRC_GRIP_START + offset, strength)
         } else if (name === cubeInternal.MSG_QUERY_SURFACE && cubeInternal.role === CubeRole.Touch) {
             radio.sendValue(cubeInternal.MSG_RESP_SURFACE, (value << 8) | cubeTouch._localSurface())
         } else if (name === cubeInternal.MSG_QUERY_GRIP && cubeInternal.role === CubeRole.Grip) {
@@ -95,10 +97,11 @@ namespace cubePair {
         radio.sendValue(cubeInternal.MSG_TOUCH_PIN, face * 10 + (stuck ? 1 : 0))
     }
 
-    export function _broadcastGripEvent(src: number): void {
+    export function _broadcastGripEvent(src: number, strength: number): void {
         if (cubeInternal.role !== CubeRole.Grip) return
-        if (src < cubeInternal.EVT_SRC_GRIP_START || src > cubeInternal.EVT_SRC_GRIP_MAX_RELEASED) return
+        if (src < cubeInternal.EVT_SRC_GRIP_START || src > cubeInternal.EVT_SRC_GRIP_CHANGED) return
         ensureRadio()
-        radio.sendValue(cubeInternal.MSG_GRIP_EVENT, src)
+        const offset = src - cubeInternal.EVT_SRC_GRIP_START
+        radio.sendValue(cubeInternal.MSG_GRIP_EVENT, (offset << 4) | (strength & 0x0f))
     }
 }

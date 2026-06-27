@@ -34,6 +34,7 @@ namespace cubeInternal {
     export const EVT_SRC_GRIP_RELEASE = 0xCB05
     export const EVT_SRC_GRIP_MAX_REACHED = 0xCB06
     export const EVT_SRC_GRIP_MAX_RELEASED = 0xCB07
+    export const EVT_SRC_GRIP_CHANGED = 0xCB08
 
     export const MSG_TOUCH_SURFACE = "ts"
     export const MSG_TOUCH_PIN = "tp"

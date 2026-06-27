@@ -9,6 +9,7 @@
     "cubeGrip.onRelease|block": "握りを離したとき",
     "cubeGrip.onMaxReached|block": "握りが最大に達したとき",
     "cubeGrip.onMaxReleased|block": "握りが最大から外れたとき",
+    "cubeGrip.onChange|block": "握りの強さが変わったとき",
 
     "cubeLight.setColor|block": "カラーLEDを %color=neopixel_colors にする",
     "cubeLight.setBrightness|block": "カラーLEDの明るさを %level にする",
