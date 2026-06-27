@@ -1,8 +1,6 @@
 //% color="#FF8C42" weight=210 icon="\uf25a" block="キューブ触感"
 namespace cubeTouch {
     const SURFACE_SAMPLE_MS = 50
-    const PIN_SAMPLE_MS = 10
-    const PIN_DEBOUNCE_MS = 20
     const SURFACE_STABLE_MS = 150
     const ACCEL_NORM_MIN = 600
     const ACCEL_NORM_MAX = 1600
@@ -12,8 +10,6 @@ namespace cubeTouch {
     let _candidate: CubeFace = CubeFace.Face1
     let _candidateSince: number = 0
     let _initialized = false
-    let _pinState = 1
-    let _lastEdgeTime = 0
 
     //% blockId=cubeTouch_surface block="surface"
     export function surface(): number {
@@ -49,16 +45,21 @@ namespace cubeTouch {
     export function _initAsTouch(): void {
         if (_initialized) return
         _initialized = true
-        pins.setPull(DigitalPin.P0, PinPullMode.PullUp)
-        _pinState = pins.digitalReadPin(DigitalPin.P0)
+        pins.touchSetMode(TouchTarget.P0, TouchTargetMode.Capacitive)
 
         loops.everyInterval(SURFACE_SAMPLE_MS, function () {
             if (cubeInternal.role !== CubeRole.Touch) return
             updateSurface()
         })
-        loops.everyInterval(PIN_SAMPLE_MS, function () {
+        input.onPinPressed(TouchPin.P0, function () {
             if (cubeInternal.role !== CubeRole.Touch) return
-            updatePin()
+            control.raiseEvent(cubeInternal.EVT_SRC_PIN_STUCK, _surface)
+            cubePair._broadcastPin(_surface, true)
+        })
+        input.onPinReleased(TouchPin.P0, function () {
+            if (cubeInternal.role !== CubeRole.Touch) return
+            control.raiseEvent(cubeInternal.EVT_SRC_PIN_RELEASED, _surface)
+            cubePair._broadcastPin(_surface, false)
         })
     }
 
@@ -98,22 +99,6 @@ namespace cubeTouch {
             _surface = candidate
             control.raiseEvent(cubeInternal.EVT_SRC_SURFACE, _surface)
             cubePair._broadcastSurface(_surface)
-        }
-    }
-
-    function updatePin(): void {
-        const now = input.runningTime()
-        if (now - _lastEdgeTime < PIN_DEBOUNCE_MS) return
-        const v = pins.digitalReadPin(DigitalPin.P0)
-        if (v === _pinState) return
-        _pinState = v
-        _lastEdgeTime = now
-        if (v === 0) {
-            control.raiseEvent(cubeInternal.EVT_SRC_PIN_STUCK, _surface)
-            cubePair._broadcastPin(_surface, true)
-        } else {
-            control.raiseEvent(cubeInternal.EVT_SRC_PIN_RELEASED, _surface)
-            cubePair._broadcastPin(_surface, false)
         }
     }
 
