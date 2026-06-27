@@ -31,4 +31,7 @@ namespace cubeLight {
         _level = level
         apply()
     }
+
+    // PL9823 の電源投入直後の不定状態を上書きするため、起動時に必ず一度 Black を送る
+    apply()
 }
