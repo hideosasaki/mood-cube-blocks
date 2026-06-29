@@ -13,7 +13,7 @@ mood cube 1ペアの実行時構成を示す。
 
 ### ブレッドボード図
 
-![ブレッドボード図](fig_breadboard.svg)
+![ブレッドボード図](fig_breadboard.png)
 
 
 ## ソフトウェア構成
