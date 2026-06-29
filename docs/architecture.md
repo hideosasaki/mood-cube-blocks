@@ -23,11 +23,9 @@ mood cube 1ペアの実行時構成を示す。
 ```mermaid
 flowchart TB
     subgraph TouchCube["触感キューブ"]
-        direction TB
         subgraph TouchMbit["micro:bit v2"]
-            direction TB
-            TouchApp["アプリ層<br/>(mood-cube-touch)"]
-            TouchExt["mood-cube-blocks<br/>cubeTouch / cubeLight / cubeVibe / cubePair"]
+            TouchApp["アプリ層<br/>mood-cube-touch"]
+            TouchExt["ハードウェア抽象層<br/>mood-cube-blocks"]
             TouchNeo["pxt-neopixel"]
             TouchRuntime["micro:bit ランタイム<br/>(加速度・容量タッチ・PWM・ラジオ)"]
             TouchApp --> TouchExt
@@ -46,11 +44,9 @@ flowchart TB
     end
 
     subgraph GripCube["握りつぶしキューブ"]
-        direction TB
         subgraph GripMbit["micro:bit v2"]
-            direction TB
-            GripApp["アプリ層<br/>(mood-cube-grip)"]
-            GripExt["mood-cube-blocks<br/>cubeGrip / cubeLight / cubeVibe / cubePair"]
+            GripApp["アプリ層<br/>mood-cube-grip"]
+            GripExt["ハードウェア抽象層<br/>mood-cube-blocks"]
             GripNeo["pxt-neopixel"]
             GripRuntime["micro:bit ランタイム<br/>(ADC・PWM・ラジオ)"]
             GripApp --> GripExt
