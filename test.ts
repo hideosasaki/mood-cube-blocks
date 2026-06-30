@@ -221,6 +221,49 @@ function runTests(): void {
     test("idle: default timeout is 3 minutes", function () {
         assertEq(cubePower.IDLE_TIMEOUT_MS, 180000, "3 minutes in ms")
     })
+
+    test("beacon: not broadcasting initially", function () {
+        cubePower._testResetBeacon()
+        assert(cubePower._isBroadcastingBeacon(0) === false, "before any start")
+        assert(cubePower._isBroadcastingBeacon(10000) === false, "any later time")
+    })
+
+    test("beacon: active within duration", function () {
+        cubePower._testResetBeacon()
+        cubePower._startBeacon(1000, 1200)
+        assert(cubePower._isBroadcastingBeacon(1000) === true, "right at start")
+        assert(cubePower._isBroadcastingBeacon(2199) === true, "just before end (1000+1199)")
+    })
+
+    test("beacon: ends at duration boundary", function () {
+        cubePower._testResetBeacon()
+        cubePower._startBeacon(1000, 1200)
+        assert(cubePower._isBroadcastingBeacon(2200) === false, "at end (1000+1200)")
+        assert(cubePower._isBroadcastingBeacon(5000) === false, "well after")
+    })
+
+    test("sleep precondition: idle + no beacon = should sleep", function () {
+        cubePower._testResetIdle()
+        cubePower._testResetBeacon()
+        cubePower._markActive(0)
+        assert(cubePower._shouldEnterSleep(200000) === true, "idle past 3min")
+    })
+
+    test("sleep precondition: not idle = should not sleep", function () {
+        cubePower._testResetIdle()
+        cubePower._testResetBeacon()
+        cubePower._markActive(100000)
+        assert(cubePower._shouldEnterSleep(200000) === false, "100s elapsed < 3min")
+    })
+
+    test("sleep precondition: broadcasting beacon blocks sleep even if idle", function () {
+        cubePower._testResetIdle()
+        cubePower._testResetBeacon()
+        cubePower._markActive(0)
+        cubePower._startBeacon(190000, 1200)
+        assert(cubePower._shouldEnterSleep(190500) === false, "beacon active blocks sleep")
+        assert(cubePower._shouldEnterSleep(192000) === true, "beacon done, idle past timeout")
+    })
 }
 
 serial.writeLine("=== mood-cube-blocks tests ===")

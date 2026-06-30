@@ -4,6 +4,7 @@ namespace cubePower {
 
     let _wakeBaseline: number = -1
     let _lastActiveAt: number = 0
+    let _beaconUntil: number = 0
 
     export function _detectWakeFromAdc(raw: number): boolean {
         if (_wakeBaseline < 0) {
@@ -25,6 +26,19 @@ namespace cubePower {
         return now - _lastActiveAt >= timeoutMs
     }
 
+    export function _startBeacon(now: number, durationMs: number): void {
+        _beaconUntil = now + durationMs
+    }
+
+    export function _isBroadcastingBeacon(now: number): boolean {
+        return now < _beaconUntil
+    }
+
+    export function _shouldEnterSleep(now: number): boolean {
+        if (_isBroadcastingBeacon(now)) return false
+        return _isIdle(now, IDLE_TIMEOUT_MS)
+    }
+
     export function _testResetWakeBaseline(): void {
         _wakeBaseline = -1
     }
@@ -39,5 +53,9 @@ namespace cubePower {
 
     export function _testGetLastActiveAt(): number {
         return _lastActiveAt
+    }
+
+    export function _testResetBeacon(): void {
+        _beaconUntil = 0
     }
 }
