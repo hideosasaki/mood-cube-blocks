@@ -1,6 +1,6 @@
 # 開発ガイド
 
-mood-cube-blocks およびこれを利用するアプリ層リポジトリ (mood-cube-grip / mood-cube-touch / mood-cube-blocks-test) を触るときの環境構築と開発フローをまとめる。要件そのものは[requirements.md](requirements.md)を参照する。
+mood-cube-blocks およびこれを利用するアプリ層リポジトリ (mood-cube-grip / mood-cube-touch / mood-cube-blocks-test) を触るときの環境構築と開発フローをまとめる。
 
 
 ## リポジトリ構成
@@ -141,7 +141,7 @@ mood-cube-blocksには2階層のテストがある。
 
 シミュレータでは再現しきれない領域 (実際のADC値・容量タッチ・無線通信距離・deepSleepの消費電流) は実機での確認に回す。
 
-### 実機統合テスト (blocks-testリポジトリ)
+### 実機統合テスト (mood-cube-blocks-testリポジトリ)
 
 `mood-cube-blocks-test`は本拡張を依存に取り、実機にデプロイして手動で挙動確認するためのMakeCodeプロジェクト。ADC・PWM・ラジオ・電力管理など、シミュレータでは確認しきれない要素はこちらで触る。grip/touchとは別系統で、配線テスト用に独立している。
 

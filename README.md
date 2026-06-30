@@ -24,7 +24,7 @@ MakeCode の拡張機能インポートで本リポジトリの URL を指定す
 
 触感キューブと握りつぶしキューブの 2 つでペアになるフィジェット作品。それぞれ別の micro:bit に本拡張をインポートしたプロジェクトを書き込み、ハードウェアと組み合わせて動かす。
 
-詳しい要件と設計判断は [docs/requirements.md](docs/requirements.md) を参照。
+要件などドキュメントは [docs/README.md](docs/README.md) を参照。
 
 ## 注意
 
