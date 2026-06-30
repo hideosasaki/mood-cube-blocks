@@ -195,6 +195,32 @@ function runTests(): void {
         assert(drifted > 110, "baseline drifted up (got " + drifted + ")")
         assert(drifted <= 120, "baseline did not overshoot (got " + drifted + ")")
     })
+
+    test("idle: not idle within timeout window", function () {
+        cubePower._testResetIdle()
+        cubePower._markActive(1000)
+        assert(cubePower._isIdle(1000, 5000) === false, "right after active")
+        assert(cubePower._isIdle(4999, 5000) === false, "just before timeout")
+    })
+
+    test("idle: idle at and beyond timeout", function () {
+        cubePower._testResetIdle()
+        cubePower._markActive(1000)
+        assert(cubePower._isIdle(6000, 5000) === true, "exactly at timeout (5000ms elapsed)")
+        assert(cubePower._isIdle(10000, 5000) === true, "well past timeout")
+    })
+
+    test("idle: markActive resets the timer", function () {
+        cubePower._testResetIdle()
+        cubePower._markActive(1000)
+        cubePower._markActive(4000)
+        assert(cubePower._isIdle(8000, 5000) === false, "second markActive resets (8000-4000=4000 < 5000)")
+        assert(cubePower._isIdle(9000, 5000) === true, "after new timeout (9000-4000=5000)")
+    })
+
+    test("idle: default timeout is 3 minutes", function () {
+        assertEq(cubePower.IDLE_TIMEOUT_MS, 180000, "3 minutes in ms")
+    })
 }
 
 serial.writeLine("=== mood-cube-blocks tests ===")
