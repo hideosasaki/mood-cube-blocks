@@ -22,6 +22,26 @@ namespace cubePower {
         power.fullPowerEvery(PERIODIC_WAKE_MS, function () {
             periodicCheck()
         })
+
+        control.inBackground(function () {
+            sleepLoop()
+        })
+    }
+
+    function sleepLoop(): void {
+        while (true) {
+            basic.pause(PERIODIC_WAKE_MS)
+            if (_shouldEnterSleep(input.runningTime())) {
+                enterSleep()
+            }
+        }
+    }
+
+    function enterSleep(): void {
+        cubeLight.setColor(NeoPixelColors.Black)
+        cubeVibe.stop()
+        power.lowPowerRequest(LowPowerMode.Wait)
+        _markActive(input.runningTime())
     }
 
     function periodicCheck(): void {

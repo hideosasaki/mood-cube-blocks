@@ -126,22 +126,35 @@ namespace cubePair {
         return request(CubeRole.Grip, cubeInternal.MSG_QUERY_PIN) === 1
     }
 
+    const BEACON_DURATION_MS = 1200
+    const BEACON_INTERVAL_MS = 50
+
+    function broadcastWithBeacon(name: string, value: number): void {
+        ensureRadio()
+        const start = input.runningTime()
+        cubePower._startBeacon(start, BEACON_DURATION_MS)
+        control.inBackground(function () {
+            const end = start + BEACON_DURATION_MS
+            while (input.runningTime() < end) {
+                radio.sendValue(name, value)
+                basic.pause(BEACON_INTERVAL_MS)
+            }
+        })
+    }
+
     export function _broadcastSurface(face: number): void {
         if (cubeInternal.role !== CubeRole.Touch) return
-        ensureRadio()
-        radio.sendValue(cubeInternal.MSG_TOUCH_SURFACE, face)
+        broadcastWithBeacon(cubeInternal.MSG_TOUCH_SURFACE, face)
     }
 
     export function _broadcastPin(face: number, stuck: boolean): void {
         if (cubeInternal.role !== CubeRole.Touch) return
-        ensureRadio()
-        radio.sendValue(cubeInternal.MSG_TOUCH_PIN, _encodePin(face, stuck))
+        broadcastWithBeacon(cubeInternal.MSG_TOUCH_PIN, _encodePin(face, stuck))
     }
 
     export function _broadcastGripEvent(src: number, strength: number): void {
         if (cubeInternal.role !== CubeRole.Grip) return
         if (src < cubeInternal.EVT_SRC_GRIP_START || src > cubeInternal.EVT_SRC_GRIP_CHANGED) return
-        ensureRadio()
-        radio.sendValue(cubeInternal.MSG_GRIP_EVENT, _encodeGripEvent(src - cubeInternal.EVT_SRC_GRIP_START, strength))
+        broadcastWithBeacon(cubeInternal.MSG_GRIP_EVENT, _encodeGripEvent(src - cubeInternal.EVT_SRC_GRIP_START, strength))
     }
 }
