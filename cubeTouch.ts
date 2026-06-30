@@ -50,6 +50,16 @@ namespace cubeTouch {
         })
     }
 
+    //% blockId=cubeTouch_onPickUp block="on picked up"
+    export function onPickUp(handler: () => void): void {
+        control.onEvent(cubeInternal.EVT_SRC_TOUCH_PICKUP, 0, handler)
+    }
+
+    //% blockId=cubeTouch_onPutDown block="on put down"
+    export function onPutDown(handler: () => void): void {
+        control.onEvent(cubeInternal.EVT_SRC_TOUCH_PUTDOWN, 0, handler)
+    }
+
     export function _initAsTouch(): void {
         if (_initialized) return
         _initialized = true
@@ -72,6 +82,16 @@ namespace cubeTouch {
             cubePower._markActive(input.runningTime())
             control.raiseEvent(cubeInternal.EVT_SRC_PIN_RELEASED, _surface)
             cubePair._broadcastPin(_surface, false)
+        })
+        control.onEvent(cubeInternal.EVT_SRC_MOTION_PICKUP, 0, function () {
+            if (cubeInternal.role !== CubeRole.Touch) return
+            control.raiseEvent(cubeInternal.EVT_SRC_TOUCH_PICKUP, 0)
+            cubePair._broadcastTouchMotion(true)
+        })
+        control.onEvent(cubeInternal.EVT_SRC_MOTION_PUTDOWN, 0, function () {
+            if (cubeInternal.role !== CubeRole.Touch) return
+            control.raiseEvent(cubeInternal.EVT_SRC_TOUCH_PUTDOWN, 0)
+            cubePair._broadcastTouchMotion(false)
         })
     }
 
@@ -137,6 +157,12 @@ namespace cubeTouch {
         cubePower._markActive(input.runningTime())
         const src = stuck ? cubeInternal.EVT_SRC_PIN_STUCK : cubeInternal.EVT_SRC_PIN_RELEASED
         control.raiseEvent(src, face)
+    }
+
+    export function _raiseRemoteMotion(pickup: boolean): void {
+        cubePower._markActive(input.runningTime())
+        const src = pickup ? cubeInternal.EVT_SRC_TOUCH_PICKUP : cubeInternal.EVT_SRC_TOUCH_PUTDOWN
+        control.raiseEvent(src, 0)
     }
 
 }

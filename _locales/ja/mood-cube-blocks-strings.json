@@ -4,6 +4,8 @@
     "cubeTouch.onSurfaceChange|block": "触感キューブ上面が変わったとき",
     "cubeTouch.onPinStuck|block": "ピンが刺さったとき",
     "cubeTouch.onPinReleased|block": "ピンが抜けたとき",
+    "cubeTouch.onPickUp|block": "触感キューブを手に取ったとき",
+    "cubeTouch.onPutDown|block": "触感キューブを置いたとき",
 
     "cubeGrip.strength|block": "握りの強さ",
     "cubeGrip.onGripStart|block": "握り始めたとき",
@@ -11,6 +13,8 @@
     "cubeGrip.onMaxReached|block": "握りが最大に達したとき",
     "cubeGrip.onMaxReleased|block": "握りが最大から外れたとき",
     "cubeGrip.onChange|block": "握りの強さが変わったとき",
+    "cubeGrip.onPickUp|block": "握りキューブを手に取ったとき",
+    "cubeGrip.onPutDown|block": "握りキューブを置いたとき",
 
     "cubeLight.setColor|block": "カラーLEDを %color=neopixel_colors にする",
     "cubeLight.setBrightness|block": "カラーLEDの明るさを %level にする",

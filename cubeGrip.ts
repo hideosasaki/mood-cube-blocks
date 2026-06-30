@@ -47,12 +47,32 @@ namespace cubeGrip {
         })
     }
 
+    //% blockId=cubeGrip_onPickUp block="on picked up"
+    export function onPickUp(handler: () => void): void {
+        control.onEvent(cubeInternal.EVT_SRC_GRIP_PICKUP, 0, handler)
+    }
+
+    //% blockId=cubeGrip_onPutDown block="on put down"
+    export function onPutDown(handler: () => void): void {
+        control.onEvent(cubeInternal.EVT_SRC_GRIP_PUTDOWN, 0, handler)
+    }
+
     export function _initAsGrip(): void {
         if (_initialized) return
         _initialized = true
         control.inBackground(function () {
             calibrateBaseline()
             startSampling()
+        })
+        control.onEvent(cubeInternal.EVT_SRC_MOTION_PICKUP, 0, function () {
+            if (cubeInternal.role !== CubeRole.Grip) return
+            control.raiseEvent(cubeInternal.EVT_SRC_GRIP_PICKUP, 0)
+            cubePair._broadcastGripMotion(true)
+        })
+        control.onEvent(cubeInternal.EVT_SRC_MOTION_PUTDOWN, 0, function () {
+            if (cubeInternal.role !== CubeRole.Grip) return
+            control.raiseEvent(cubeInternal.EVT_SRC_GRIP_PUTDOWN, 0)
+            cubePair._broadcastGripMotion(false)
         })
     }
 
@@ -147,6 +167,12 @@ namespace cubeGrip {
         if (src < cubeInternal.EVT_SRC_GRIP_START || src > cubeInternal.EVT_SRC_GRIP_CHANGED) return
         cubePower._markActive(input.runningTime())
         control.raiseEvent(src, strength)
+    }
+
+    export function _raiseRemoteMotion(pickup: boolean): void {
+        cubePower._markActive(input.runningTime())
+        const src = pickup ? cubeInternal.EVT_SRC_GRIP_PICKUP : cubeInternal.EVT_SRC_GRIP_PUTDOWN
+        control.raiseEvent(src, 0)
     }
 
     export function _testResetState(): void {

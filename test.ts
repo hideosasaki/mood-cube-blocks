@@ -252,6 +252,54 @@ function runTests(): void {
         assert(cubePower._shouldEnterSleep(190500) === false, "beacon active blocks sleep")
         assert(cubePower._shouldEnterSleep(192000) === true, "beacon done, idle past timeout")
     })
+
+    test("stepMotion: still + no motion stays still, no event", function () {
+        cubePower._testResetMotionState()
+        assertEq(cubePower._stepMotion(false, 1000), cubePower.MOTION_EVT_NONE, "no event")
+    })
+
+    test("stepMotion: still + motion -> PICKUP", function () {
+        cubePower._testResetMotionState()
+        assertEq(cubePower._stepMotion(true, 1000), cubePower.MOTION_EVT_PICKUP, "pickup fired")
+    })
+
+    test("stepMotion: continued motion does not re-fire PICKUP", function () {
+        cubePower._testResetMotionState()
+        cubePower._stepMotion(true, 1000)
+        assertEq(cubePower._stepMotion(true, 1050), cubePower.MOTION_EVT_NONE, "no re-fire")
+        assertEq(cubePower._stepMotion(true, 1100), cubePower.MOTION_EVT_NONE, "still no re-fire")
+    })
+
+    test("stepMotion: moving + first still does not fire yet", function () {
+        cubePower._testResetMotionState()
+        cubePower._stepMotion(true, 1000)
+        assertEq(cubePower._stepMotion(false, 1100), cubePower.MOTION_EVT_NONE, "still timer started")
+    })
+
+    test("stepMotion: PUTDOWN fires after still continues past 1500ms", function () {
+        cubePower._testResetMotionState()
+        cubePower._stepMotion(true, 1000)
+        cubePower._stepMotion(false, 2000)
+        assertEq(cubePower._stepMotion(false, 3000), cubePower.MOTION_EVT_NONE, "1000ms still, not yet")
+        assertEq(cubePower._stepMotion(false, 3500), cubePower.MOTION_EVT_PUTDOWN, "1500ms still, fires")
+    })
+
+    test("stepMotion: motion during still window aborts putdown", function () {
+        cubePower._testResetMotionState()
+        cubePower._stepMotion(true, 1000)
+        cubePower._stepMotion(false, 2000)
+        assertEq(cubePower._stepMotion(true, 2500), cubePower.MOTION_EVT_NONE, "motion resumes, no event")
+        assertEq(cubePower._stepMotion(false, 3000), cubePower.MOTION_EVT_NONE, "still restart")
+        assertEq(cubePower._stepMotion(false, 4500), cubePower.MOTION_EVT_PUTDOWN, "1500ms from new still start")
+    })
+
+    test("stepMotion: PUTDOWN restores still state, next motion fires PICKUP", function () {
+        cubePower._testResetMotionState()
+        cubePower._stepMotion(true, 1000)
+        cubePower._stepMotion(false, 2000)
+        cubePower._stepMotion(false, 3500)
+        assertEq(cubePower._stepMotion(true, 4000), cubePower.MOTION_EVT_PICKUP, "pickup after putdown")
+    })
 }
 
 serial.writeLine("=== mood-cube-blocks tests ===")

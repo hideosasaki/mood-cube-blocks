@@ -44,6 +44,10 @@ namespace cubePair {
             cubeTouch._raiseRemotePin(_decodePinFace(value), _decodePinStuck(value))
         } else if (name === cubeInternal.MSG_GRIP_EVENT && cubeInternal.role === CubeRole.Touch) {
             cubeGrip._raiseRemoteGripEvent(cubeInternal.EVT_SRC_GRIP_START + _decodeGripOffset(value), _decodeGripStrength(value))
+        } else if (name === cubeInternal.MSG_TOUCH_MOTION && cubeInternal.role === CubeRole.Grip) {
+            cubeTouch._raiseRemoteMotion(value === 1)
+        } else if (name === cubeInternal.MSG_GRIP_MOTION && cubeInternal.role === CubeRole.Touch) {
+            cubeGrip._raiseRemoteMotion(value === 1)
         } else if (name === cubeInternal.MSG_QUERY_SURFACE && cubeInternal.role === CubeRole.Touch) {
             radio.sendValue(cubeInternal.MSG_RESP_SURFACE, _encodeResp(value, cubeTouch._localSurface()))
         } else if (name === cubeInternal.MSG_QUERY_GRIP && cubeInternal.role === CubeRole.Grip) {
@@ -156,5 +160,15 @@ namespace cubePair {
         if (cubeInternal.role !== CubeRole.Grip) return
         if (src < cubeInternal.EVT_SRC_GRIP_START || src > cubeInternal.EVT_SRC_GRIP_CHANGED) return
         broadcastWithBeacon(cubeInternal.MSG_GRIP_EVENT, _encodeGripEvent(src - cubeInternal.EVT_SRC_GRIP_START, strength))
+    }
+
+    export function _broadcastTouchMotion(pickup: boolean): void {
+        if (cubeInternal.role !== CubeRole.Touch) return
+        broadcastWithBeacon(cubeInternal.MSG_TOUCH_MOTION, pickup ? 1 : 0)
+    }
+
+    export function _broadcastGripMotion(pickup: boolean): void {
+        if (cubeInternal.role !== CubeRole.Grip) return
+        broadcastWithBeacon(cubeInternal.MSG_GRIP_MOTION, pickup ? 1 : 0)
     }
 }

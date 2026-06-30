@@ -35,10 +35,18 @@ namespace cubeInternal {
     export const EVT_SRC_GRIP_MAX_REACHED = 0xCB06
     export const EVT_SRC_GRIP_MAX_RELEASED = 0xCB07
     export const EVT_SRC_GRIP_CHANGED = 0xCB08
+    export const EVT_SRC_TOUCH_PICKUP = 0xCB09
+    export const EVT_SRC_TOUCH_PUTDOWN = 0xCB0A
+    export const EVT_SRC_GRIP_PICKUP = 0xCB0B
+    export const EVT_SRC_GRIP_PUTDOWN = 0xCB0C
+    export const EVT_SRC_MOTION_PICKUP = 0xCB0D
+    export const EVT_SRC_MOTION_PUTDOWN = 0xCB0E
 
     export const MSG_TOUCH_SURFACE = "ts"
     export const MSG_TOUCH_PIN = "tp"
     export const MSG_GRIP_EVENT = "ge"
+    export const MSG_TOUCH_MOTION = "tm"
+    export const MSG_GRIP_MOTION = "gm"
     export const MSG_QUERY_SURFACE = "qs"
     export const MSG_QUERY_GRIP = "qg"
     export const MSG_RESP_SURFACE = "rs"
