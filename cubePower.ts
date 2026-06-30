@@ -1,21 +1,31 @@
 namespace cubePower {
-    const WAKE_DELTA_THRESHOLD = 30
+    const WAKE_MARGIN = 30
+    const PERIODIC_WAKE_MS = 1000
     export const IDLE_TIMEOUT_MS = 180000
 
-    let _wakeBaseline: number = -1
     let _lastActiveAt: number = 0
     let _beaconUntil: number = 0
+    let _initialized = false
 
-    export function _detectWakeFromAdc(raw: number): boolean {
-        if (_wakeBaseline < 0) {
-            _wakeBaseline = raw
-            return false
+    export function _init(): void {
+        if (_initialized) return
+        _initialized = true
+
+        power.fullPowerOn(FullPowerSource.A)
+        power.fullPowerOn(FullPowerSource.B)
+        power.fullPowerOn(FullPowerSource.P0)
+
+        power.fullPowerEvery(PERIODIC_WAKE_MS, function () {
+            periodicCheck()
+        })
+    }
+
+    function periodicCheck(): void {
+        if (cubeInternal.role !== CubeRole.Grip) return
+        const raw = pins.analogReadPin(AnalogPin.P0)
+        if (raw > cubeGrip._getRawZeroMax() + WAKE_MARGIN) {
+            _markActive(input.runningTime())
         }
-        const diff = raw - _wakeBaseline
-        const absDiff = diff < 0 ? -diff : diff
-        if (absDiff > WAKE_DELTA_THRESHOLD) return true
-        _wakeBaseline = ((_wakeBaseline * 7) + raw) >> 3
-        return false
     }
 
     export function _markActive(now: number): void {
@@ -37,14 +47,6 @@ namespace cubePower {
     export function _shouldEnterSleep(now: number): boolean {
         if (_isBroadcastingBeacon(now)) return false
         return _isIdle(now, IDLE_TIMEOUT_MS)
-    }
-
-    export function _testResetWakeBaseline(): void {
-        _wakeBaseline = -1
-    }
-
-    export function _testGetWakeBaseline(): number {
-        return _wakeBaseline
     }
 
     export function _testResetIdle(): void {

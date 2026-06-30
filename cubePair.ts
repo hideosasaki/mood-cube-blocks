@@ -14,6 +14,7 @@ namespace cubePair {
         ensureRadio()
         if (role === CubeRole.Touch) cubeTouch._initAsTouch()
         else if (role === CubeRole.Grip) cubeGrip._initAsGrip()
+        cubePower._init()
     }
 
     //% blockId=cubePair_setGroup block="set pair group %id"
