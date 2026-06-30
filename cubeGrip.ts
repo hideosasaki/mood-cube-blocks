@@ -87,7 +87,7 @@ namespace cubeGrip {
         })
     }
 
-    function rawToStrength(raw: number): number {
+    export function _rawToStrength(raw: number): number {
         if (raw <= _rawZeroMax) return 0
         if (raw >= RAW_FULL) return 9
         const span = RAW_FULL - _rawZeroMax
@@ -98,8 +98,11 @@ namespace cubeGrip {
     }
 
     function sampleOnce(): void {
-        const raw = pins.analogReadPin(AnalogPin.P0)
-        const target = rawToStrength(raw)
+        processSample(pins.analogReadPin(AnalogPin.P0))
+    }
+
+    function processSample(raw: number): void {
+        const target = _rawToStrength(raw)
         if (target === _strength) {
             _stableCount = 0
             return
@@ -142,5 +145,28 @@ namespace cubeGrip {
     export function _raiseRemoteGripEvent(src: number, strength: number): void {
         if (src < cubeInternal.EVT_SRC_GRIP_START || src > cubeInternal.EVT_SRC_GRIP_CHANGED) return
         control.raiseEvent(src, strength)
+    }
+
+    export function _testResetState(): void {
+        _strength = 0
+        _candidate = 0
+        _stableCount = 0
+        _rawZeroMax = RAW_ZERO_MAX_DEFAULT
+    }
+
+    export function _testFeedSample(raw: number): void {
+        processSample(raw)
+    }
+
+    export function _testGetStrength(): number {
+        return _strength
+    }
+
+    export function _testGetCandidate(): number {
+        return _candidate
+    }
+
+    export function _testGetStableCount(): number {
+        return _stableCount
     }
 }

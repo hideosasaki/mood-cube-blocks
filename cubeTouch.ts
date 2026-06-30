@@ -74,30 +74,8 @@ namespace cubeTouch {
     }
 
     function updateSurface(): void {
-        const x = input.acceleration(Dimension.X)
-        const y = input.acceleration(Dimension.Y)
-        const z = input.acceleration(Dimension.Z)
-        const ax = Math.abs(x)
-        const ay = Math.abs(y)
-        const az = Math.abs(z)
-        const norm = ax + ay + az
-        if (norm < ACCEL_NORM_MIN || norm > ACCEL_NORM_MAX) return
-
-        let maxAxis = 0
-        let maxVal = ax
-        if (ay > maxVal) { maxAxis = 1; maxVal = ay }
-        if (az > maxVal) { maxAxis = 2; maxVal = az }
-
-        let second = 0
-        if (maxAxis === 0) second = ay > az ? ay : az
-        else if (maxAxis === 1) second = ax > az ? ax : az
-        else second = ax > ay ? ax : ay
-        if (maxVal - second < AXIS_DOMINANCE_MIN) return
-
-        let candidate = CubeFace.Face1
-        if (maxAxis === 0) candidate = x > 0 ? CubeFace.Face3 : CubeFace.Face4
-        else if (maxAxis === 1) candidate = y > 0 ? CubeFace.Face2 : CubeFace.Face5
-        else candidate = z > 0 ? CubeFace.Face6 : CubeFace.Face1
+        const candidate = _classifyAccel(input.acceleration(Dimension.X), input.acceleration(Dimension.Y), input.acceleration(Dimension.Z))
+        if (candidate === 0) return
 
         const now = input.runningTime()
         if (candidate !== _candidate) {
@@ -110,6 +88,29 @@ namespace cubeTouch {
             control.raiseEvent(cubeInternal.EVT_SRC_SURFACE, _surface)
             cubePair._broadcastSurface(_surface)
         }
+    }
+
+    export function _classifyAccel(x: number, y: number, z: number): number {
+        const ax = Math.abs(x)
+        const ay = Math.abs(y)
+        const az = Math.abs(z)
+        const norm = ax + ay + az
+        if (norm < ACCEL_NORM_MIN || norm > ACCEL_NORM_MAX) return 0
+
+        let maxAxis = 0
+        let maxVal = ax
+        if (ay > maxVal) { maxAxis = 1; maxVal = ay }
+        if (az > maxVal) { maxAxis = 2; maxVal = az }
+
+        let second = 0
+        if (maxAxis === 0) second = ay > az ? ay : az
+        else if (maxAxis === 1) second = ax > az ? ax : az
+        else second = ax > ay ? ax : ay
+        if (maxVal - second < AXIS_DOMINANCE_MIN) return 0
+
+        if (maxAxis === 0) return x > 0 ? CubeFace.Face3 : CubeFace.Face4
+        if (maxAxis === 1) return y > 0 ? CubeFace.Face2 : CubeFace.Face5
+        return z > 0 ? CubeFace.Face6 : CubeFace.Face1
     }
 
     export function _localSurface(): CubeFace {
@@ -132,4 +133,5 @@ namespace cubeTouch {
         const src = stuck ? cubeInternal.EVT_SRC_PIN_STUCK : cubeInternal.EVT_SRC_PIN_RELEASED
         control.raiseEvent(src, face)
     }
+
 }
