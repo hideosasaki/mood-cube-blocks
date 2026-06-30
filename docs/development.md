@@ -116,6 +116,36 @@ mood-cube-blocks側で公開ブロックのsignature、enum値、ブロック表
 公開APIを変更するときは、利用側のリポジトリでもwebエディタで開き直してblocksの再構築を確認する。
 
 
+## テスト
+
+mood-cube-blocksには2階層のテストがある。
+
+### 単体テスト (test.ts)
+
+ピュアロジック (ヒステリシス・classifyAccel・メッセージのエンコード/デコード・電力管理の状態判定など) はtest.tsにassertionベースで書く。pxt.jsonの`testFiles`に登録されているので、拡張機能を利用する側 (grip/touch/blocks-test) には降りない。拡張機能の開発時だけ実行される。
+
+実行方法:
+
+1. ローカルで`pxt build`を実行する。test.tsも型チェック対象になり、コンパイルエラーがあれば検知できる
+2. ブラウザで以下のURLを開く。MakeCodeがリポジトリを「拡張機能 + テストファイル」として読み込み、シミュレータでtest.tsが走る
+   - [https://makecode.microbit.org/#github:hideosasaki/mood-cube-blocks](https://makecode.microbit.org/#github:hideosasaki/mood-cube-blocks)
+3. MakeCodeエディタ上の「拡張機能のテスト」ボタンも同じシミュレータ実行をする
+
+成功時は5x5 LEDにチェックマーク、失敗時は×マーク+失敗件数。シリアル出力 (画面下) に`=== N passed, M failed ===`が出る。
+
+書き方の方針:
+
+- 内部ヘルパは`_`プレフィックスでexportし、test.tsから直接呼ぶ。`cubeGrip._rawToStrength`、`cubeTouch._classifyAccel`、`cubePower._detectMotion`など
+- 状態を持つ機能 (hysteresis、idle、beacon、motion baseline) はリセット用と観測用の`_testXxx`を併設してテスト駆動を可能にする
+- assertヘルパは自前で持つ。`control.assert`はpanicするので、テストスイートとしては失敗を集計するassertが必要
+
+シミュレータでは再現しきれない領域 (実際のADC値・容量タッチ・無線通信距離・deepSleepの消費電流) は実機での確認に回す。
+
+### 実機統合テスト (blocks-testリポジトリ)
+
+`mood-cube-blocks-test`は本拡張を依存に取り、実機にデプロイして手動で挙動確認するためのMakeCodeプロジェクト。ADC・PWM・ラジオ・電力管理など、シミュレータでは確認しきれない要素はこちらで触る。grip/touchとは別系統で、配線テスト用に独立している。
+
+
 ## 補足: pxt serveについて
 
 `pxt serve`はMakeCode target本体 (pxt-microbit) を開発するためのコマンドで、ユーザープロジェクトの編集には使えない。プロジェクトディレクトリで実行しても、ターゲットの`libs/`ディレクトリ探索に失敗してターゲットビルドが失敗し、ブラウザにはターゲット同梱のデフォルトプロジェクトが表示される。

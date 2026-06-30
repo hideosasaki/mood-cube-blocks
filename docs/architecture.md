@@ -27,11 +27,14 @@ flowchart TB
             TouchApp["アプリ層<br/>mood-cube-touch"]
             TouchExt["ハードウェア抽象層<br/>mood-cube-blocks"]
             TouchNeo["pxt-neopixel"]
+            TouchPwr["pxt-microbit-v2-power"]
             TouchRuntime["micro:bit ランタイム<br/>(加速度・容量タッチ・PWM・ラジオ)"]
             TouchApp --> TouchExt
             TouchExt --> TouchNeo
+            TouchExt --> TouchPwr
             TouchExt --> TouchRuntime
             TouchNeo --> TouchRuntime
+            TouchPwr --> TouchRuntime
         end
         TouchAccel[["加速度センサ<br/>(内蔵)"]]
         TouchPins[["容量タッチ電極<br/>6面並列 / P0"]]
@@ -48,15 +51,20 @@ flowchart TB
             GripApp["アプリ層<br/>mood-cube-grip"]
             GripExt["ハードウェア抽象層<br/>mood-cube-blocks"]
             GripNeo["pxt-neopixel"]
-            GripRuntime["micro:bit ランタイム<br/>(ADC・PWM・ラジオ)"]
+            GripPwr["pxt-microbit-v2-power"]
+            GripRuntime["micro:bit ランタイム<br/>(加速度・ADC・PWM・ラジオ)"]
             GripApp --> GripExt
             GripExt --> GripNeo
+            GripExt --> GripPwr
             GripExt --> GripRuntime
             GripNeo --> GripRuntime
+            GripPwr --> GripRuntime
         end
+        GripAccel[["加速度センサ<br/>(内蔵)"]]
         GripPressure[["圧力センサ + 分圧回路<br/>P0 (アナログ)"]]
         GripLed[["PL9823 × 1<br/>P2"]]
         GripVibe[["振動モーター<br/>+ 駆動回路 / P1"]]
+        GripRuntime --- GripAccel
         GripRuntime --- GripPressure
         GripRuntime --- GripLed
         GripRuntime --- GripVibe
@@ -80,6 +88,10 @@ flowchart TB
 
 PL9823の駆動実体。mood-cube-blocksの内部依存として組み込まれ、アプリ層からは直接見えない。
 
+### pxt-microbit-v2-power
+
+deepSleep制御と周期wakeコールバック、ハード起床ソース設定 (ボタン・ピン) を扱う公式拡張。mood-cube-blocksの内部依存として組み込まれ、アプリ層からは見えない。自動省電力は3分アイドルで突入し、ハード割り込みか1秒周期wakeで復帰する。
+
 ### micro:bitランタイム
 
 加速度センサ、容量タッチ、ADC、PWM、ラジオなどmicro:bit v2が標準で備える機能。
@@ -91,6 +103,6 @@ PL9823の駆動実体。mood-cube-blocksの内部依存として組み込まれ�
 
 通信の挙動:
 
-- 入力イベント (上面変化・ピン刺し・握り強さなど): 発生側がブロードキャストし、受信側でも同じイベントとして発火する
+- 入力イベント (上面変化・ピン刺し・握り強さなど): 発生側が1.2秒間50ms間隔で連投し、受信側でも同じイベントとして発火する。連投は寝ている相棒の周期wake (1秒以内) で確実に拾わせるため。両者がアクティブ中は最初の数発で受信され、残りは冗長に流れるだけ
 - ポーリング値 (上面の現在値・握り強度): 取得ブロックが呼ばれた瞬間にリクエストを送り、応答を同期で待つ。タイムアウト時はデフォルト値を返す
 - 出力 (発光・振動): 自分のキューブにのみ作用し、相手には伝搬しない

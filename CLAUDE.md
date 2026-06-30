@@ -15,7 +15,7 @@ micro:bit v2 用 MakeCode 拡張機能。フィジェット作品「mood cube」
 - ターゲットは micro:bit v2 のみ
 - Static TypeScript (MakeCode subset)。`any` / eval / 一部の高階関数は使えない
 - 公開ブロックは JSDoc アノテーション (`//% block="..."`) で定義
-- 内部依存として Microsoft/pxt-neopixel を pxt.json に含める (発光制御の実体)
+- 内部依存として Microsoft/pxt-neopixel (発光制御の実体) と microbit-foundation/pxt-microbit-v2-power (自動 deepSleep の実体) を pxt.json に含める
 - public リポジトリなので個人を特定する情報は書かない
 
 ## やらないこと
