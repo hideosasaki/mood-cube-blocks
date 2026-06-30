@@ -275,8 +275,8 @@ deepSleep は RAM を保持するので、アプリ層の変数・登録済み�
 
 出力 (発光・振動) は両キューブで完全共通、入力 (上面判定・ピン刺し・圧力) はキューブ固有とする対称構造を取る。共通プリフィックス `cube` を全 namespace に付け、子供がブロックパレット上でこの拡張のブロックをひとまとまりとして認識できるようにする。色相を散らして5 namespace を視覚的に区別する。`mood` のような意味付け語は採用せず、ハードウェア役割をそのまま名前にする。
 
-- 触感キューブの入力 (`cubeTouch`): 色 `#FF8C42` (オレンジ)、アイコン `` (`fa-hand-pointer-o`)
-- 握りつぶしキューブの入力 (`cubeGrip`): 色 `#E63946` (赤)、アイコン `` (`fa-hand-rock-o`)
-- 発光 (`cubeLight`): 色 `#FFD23F` (黄)、アイコン `` (`fa-lightbulb-o`)
-- 振動 (`cubeVibe`): 色 `#6A4C93` (紫)、アイコン `` (`fa-bell`)
-- ペア連動の制御 (`cubePair`): 色 `#2A9D8F` (青緑)、アイコン `` (`fa-link`)
+- 触感キューブの入力 (`cubeTouch`): 色 `#FF8C42` (オレンジ)、アイコン `fa-hand-pointer-o`
+- 握りつぶしキューブの入力 (`cubeGrip`): 色 `#E63946` (赤)、アイコン `fa-hand-rock-o`
+- 発光 (`cubeLight`): 色 `#FFD23F` (黄)、アイコン `fa-lightbulb-o`
+- 振動 (`cubeVibe`): 色 `#6A4C93` (紫)、アイコン `fa-bell`
+- ペア連動の制御 (`cubePair`): 色 `#2A9D8F` (青緑)、アイコン `fa-link`
