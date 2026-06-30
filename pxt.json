@@ -15,6 +15,7 @@
         "cubeLight.ts",
         "cubeVibe.ts",
         "cubePair.ts",
+        "cubePower.ts",
         "README.md",
         "_locales/ja/mood-cube-blocks-strings.json",
         "_locales/ja/mood-cube-blocks-jsdoc-strings.json"

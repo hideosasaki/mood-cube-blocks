@@ -158,6 +158,43 @@ function runTests(): void {
         assertEq(cubePair._decodeRespId(v), 0, "id")
         assertEq(cubePair._decodeRespValue(v), 9, "payload")
     })
+
+    test("wake detect: first sample establishes baseline, returns false", function () {
+        cubePower._testResetWakeBaseline()
+        assert(cubePower._detectWakeFromAdc(100) === false, "first sample never wakes")
+        assertEq(cubePower._testGetWakeBaseline(), 100, "baseline set to first sample")
+    })
+
+    test("wake detect: stable samples do not trigger wake", function () {
+        cubePower._testResetWakeBaseline()
+        cubePower._detectWakeFromAdc(100)
+        assert(cubePower._detectWakeFromAdc(102) === false, "small delta no wake")
+        assert(cubePower._detectWakeFromAdc(98) === false, "small negative delta no wake")
+        assert(cubePower._detectWakeFromAdc(105) === false, "still under threshold")
+    })
+
+    test("wake detect: large positive deviation triggers wake", function () {
+        cubePower._testResetWakeBaseline()
+        cubePower._detectWakeFromAdc(100)
+        assert(cubePower._detectWakeFromAdc(200) === true, "delta=100 > threshold 30")
+    })
+
+    test("wake detect: large negative deviation triggers wake", function () {
+        cubePower._testResetWakeBaseline()
+        cubePower._detectWakeFromAdc(500)
+        assert(cubePower._detectWakeFromAdc(400) === true, "delta=-100 > threshold 30")
+    })
+
+    test("wake detect: baseline drifts toward sustained value", function () {
+        cubePower._testResetWakeBaseline()
+        cubePower._detectWakeFromAdc(100)
+        for (let i = 0; i < 30; i++) {
+            cubePower._detectWakeFromAdc(120)
+        }
+        const drifted = cubePower._testGetWakeBaseline()
+        assert(drifted > 110, "baseline drifted up (got " + drifted + ")")
+        assert(drifted <= 120, "baseline did not overshoot (got " + drifted + ")")
+    })
 }
 
 serial.writeLine("=== mood-cube-blocks tests ===")
