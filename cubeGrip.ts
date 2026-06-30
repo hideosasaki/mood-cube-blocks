@@ -149,10 +149,6 @@ namespace cubeGrip {
         control.raiseEvent(src, strength)
     }
 
-    export function _getRawZeroMax(): number {
-        return _rawZeroMax
-    }
-
     export function _testResetState(): void {
         _strength = 0
         _candidate = 0

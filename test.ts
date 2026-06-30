@@ -159,6 +159,31 @@ function runTests(): void {
         assertEq(cubePair._decodeRespValue(v), 9, "payload")
     })
 
+    test("motion: first reading establishes baseline, returns false", function () {
+        cubePower._testResetMotion()
+        assert(cubePower._detectMotion(100, 200, 1000) === false, "first reading never triggers")
+    })
+
+    test("motion: stable readings do not trigger", function () {
+        cubePower._testResetMotion()
+        cubePower._detectMotion(100, 200, 1000)
+        assert(cubePower._detectMotion(105, 195, 1003) === false, "tiny noise")
+        assert(cubePower._detectMotion(110, 190, 1005) === false, "still under threshold")
+    })
+
+    test("motion: large change triggers wake", function () {
+        cubePower._testResetMotion()
+        cubePower._detectMotion(0, 0, 1024)
+        assert(cubePower._detectMotion(0, 1024, 0) === true, "axis flip: dx+dy+dz=2048 > 200")
+    })
+
+    test("motion: baseline tracks current value after each call", function () {
+        cubePower._testResetMotion()
+        cubePower._detectMotion(0, 0, 1024)
+        cubePower._detectMotion(0, 1024, 0)
+        assert(cubePower._detectMotion(0, 1024, 0) === false, "now stationary at new orientation")
+    })
+
     test("idle: not idle within timeout window", function () {
         cubePower._testResetIdle()
         cubePower._markActive(1000)
