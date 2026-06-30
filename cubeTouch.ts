@@ -62,12 +62,14 @@ namespace cubeTouch {
         input.onPinPressed(TouchPin.P0, function () {
             if (cubeInternal.role !== CubeRole.Touch) return
             _pinStuck = true
+            cubePower._markActive(input.runningTime())
             control.raiseEvent(cubeInternal.EVT_SRC_PIN_STUCK, _surface)
             cubePair._broadcastPin(_surface, true)
         })
         input.onPinReleased(TouchPin.P0, function () {
             if (cubeInternal.role !== CubeRole.Touch) return
             _pinStuck = false
+            cubePower._markActive(input.runningTime())
             control.raiseEvent(cubeInternal.EVT_SRC_PIN_RELEASED, _surface)
             cubePair._broadcastPin(_surface, false)
         })
@@ -85,6 +87,7 @@ namespace cubeTouch {
         }
         if (now - _candidateSince >= SURFACE_STABLE_MS && candidate !== _surface) {
             _surface = candidate
+            cubePower._markActive(now)
             control.raiseEvent(cubeInternal.EVT_SRC_SURFACE, _surface)
             cubePair._broadcastSurface(_surface)
         }
@@ -124,12 +127,14 @@ namespace cubeTouch {
     export function _raiseRemoteSurface(face: number): void {
         if (face < 1 || face > 6) return
         _surface = face
+        cubePower._markActive(input.runningTime())
         control.raiseEvent(cubeInternal.EVT_SRC_SURFACE, face)
     }
 
     export function _raiseRemotePin(face: number, stuck: boolean): void {
         if (face < 1 || face > 6) return
         _pinStuck = stuck
+        cubePower._markActive(input.runningTime())
         const src = stuck ? cubeInternal.EVT_SRC_PIN_STUCK : cubeInternal.EVT_SRC_PIN_RELEASED
         control.raiseEvent(src, face)
     }

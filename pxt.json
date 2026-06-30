@@ -6,7 +6,8 @@
     "dependencies": {
         "core": "*",
         "radio": "*",
-        "neopixel": "github:microsoft/pxt-neopixel"
+        "neopixel": "github:microsoft/pxt-neopixel",
+        "microbit-v2-power": "github:microbit-foundation/pxt-microbit-v2-power"
     },
     "files": [
         "shared.ts",

@@ -122,6 +122,7 @@ namespace cubeGrip {
         const prev = _strength
         _strength = target
         _stableCount = 0
+        cubePower._markActive(input.runningTime())
         emitTransitions(prev, _strength)
     }
 
@@ -144,6 +145,7 @@ namespace cubeGrip {
 
     export function _raiseRemoteGripEvent(src: number, strength: number): void {
         if (src < cubeInternal.EVT_SRC_GRIP_START || src > cubeInternal.EVT_SRC_GRIP_CHANGED) return
+        cubePower._markActive(input.runningTime())
         control.raiseEvent(src, strength)
     }
 
