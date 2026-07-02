@@ -101,6 +101,45 @@ function runTests(): void {
         assertEq(cubeGrip._testGetStableCount(), 0, "raw maps to 0 = current strength, counter reset")
     })
 
+    test("calibration: stable samples set baseline to median + margin", function () {
+        cubeGrip._testResetState()
+        cubeGrip._applyCalibration([100, 101, 102, 103, 104, 105])
+        assertEq(cubeGrip._testGetRawZeroMax(), 123, "median 103 + margin 20")
+    })
+
+    test("calibration: unsorted samples are handled", function () {
+        cubeGrip._testResetState()
+        cubeGrip._applyCalibration([105, 100, 103, 101, 104, 102])
+        assertEq(cubeGrip._testGetRawZeroMax(), 123, "same result as sorted input")
+    })
+
+    test("calibration: large spread keeps current baseline", function () {
+        cubeGrip._testResetState()
+        cubeGrip._applyCalibration([100, 101, 102, 103, 104, 105])
+        cubeGrip._applyCalibration([0, 10, 20, 30, 40, 200])
+        assertEq(cubeGrip._testGetRawZeroMax(), 123, "spread 200 > 100, keep current")
+    })
+
+    test("calibration: high median keeps current baseline", function () {
+        cubeGrip._testResetState()
+        cubeGrip._applyCalibration([100, 101, 102, 103, 104, 105])
+        cubeGrip._applyCalibration([210, 210, 210, 211, 211, 211])
+        assertEq(cubeGrip._testGetRawZeroMax(), 123, "median 211 > 200, keep current")
+    })
+
+    test("calibration: median exactly 200 is accepted", function () {
+        cubeGrip._testResetState()
+        cubeGrip._applyCalibration([195, 197, 199, 200, 201, 203])
+        assertEq(cubeGrip._testGetRawZeroMax(), 220, "median 200 + margin 20")
+    })
+
+    test("calibration: raised baseline clears phantom strength", function () {
+        cubeGrip._testResetState()
+        assertEq(cubeGrip._rawToStrength(110), 1, "phantom strength before calibration")
+        cubeGrip._applyCalibration([110, 110, 110, 110, 110, 110])
+        assertEq(cubeGrip._rawToStrength(110), 0, "phantom cleared")
+    })
+
     test("classifyAccel: norm below min returns 0", function () {
         assertEq(cubeTouch._classifyAccel(100, 100, 100), 0, "norm=300")
     })

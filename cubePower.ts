@@ -52,6 +52,7 @@ namespace cubePower {
     function enterSleep(): void {
         cubeLight.setColor(NeoPixelColors.Black)
         cubeVibe.stop()
+        cubeGrip._calibrate()
         power.lowPowerRequest(LowPowerMode.Wait)
         _markActive(input.runningTime())
     }

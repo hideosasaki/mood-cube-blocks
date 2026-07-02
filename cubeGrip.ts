@@ -60,10 +60,7 @@ namespace cubeGrip {
     export function _initAsGrip(): void {
         if (_initialized) return
         _initialized = true
-        control.inBackground(function () {
-            calibrateBaseline()
-            startSampling()
-        })
+        startSampling()
         control.onEvent(cubeInternal.EVT_SRC_MOTION_PICKUP, 0, function () {
             if (cubeInternal.role !== CubeRole.Grip) return
             control.raiseEvent(cubeInternal.EVT_SRC_GRIP_PICKUP, 0)
@@ -76,12 +73,17 @@ namespace cubeGrip {
         })
     }
 
-    function calibrateBaseline(): void {
+    export function _calibrate(): void {
+        if (cubeInternal.role !== CubeRole.Grip) return
         const samples: number[] = []
         for (let i = 0; i < BASELINE_SAMPLES; i++) {
             samples.push(pins.analogReadPin(AnalogPin.P0))
             basic.pause(BASELINE_INTERVAL_MS)
         }
+        _applyCalibration(samples)
+    }
+
+    export function _applyCalibration(samples: number[]): void {
         for (let i = 1; i < samples.length; i++) {
             const v = samples[i]
             let j = i - 1
@@ -93,11 +95,8 @@ namespace cubeGrip {
         }
         const median = samples[samples.length >> 1]
         const spread = samples[samples.length - 1] - samples[0]
-        if (spread > 100 || median > 200) {
-            _rawZeroMax = RAW_ZERO_MAX_DEFAULT
-        } else {
-            _rawZeroMax = median + BASELINE_MARGIN
-        }
+        if (spread > 100 || median > 200) return
+        _rawZeroMax = median + BASELINE_MARGIN
     }
 
     function startSampling(): void {
@@ -180,6 +179,10 @@ namespace cubeGrip {
         _candidate = 0
         _stableCount = 0
         _rawZeroMax = RAW_ZERO_MAX_DEFAULT
+    }
+
+    export function _testGetRawZeroMax(): number {
+        return _rawZeroMax
     }
 
     export function _testFeedSample(raw: number): void {

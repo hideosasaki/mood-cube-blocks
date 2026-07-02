@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "target": "ES2017",
+        "rootDir": "../..",
+        "lib": ["ES2017"],
+        "outFile": "../../built/local-test.js",
+        "strict": false,
+        "noImplicitAny": false,
+        "types": [],
+        "ignoreDeprecations": "6.0"
+    },
+    "files": [
+        "stubs.ts",
+        "../../shared.ts",
+        "../../cubePower.ts",
+        "../../cubeLight.ts",
+        "../../cubeVibe.ts",
+        "../../cubePair.ts",
+        "../../cubeTouch.ts",
+        "../../cubeGrip.ts",
+        "../../test.ts"
+    ]
+}
