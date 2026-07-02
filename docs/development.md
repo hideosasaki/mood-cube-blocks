@@ -70,38 +70,20 @@ mood-cube-blocksは公開APIを提供する側、grip/touch/blocks-testは利用
 
 ### アプリ層 (grip / touch / blocks-test) を直すとき
 
-アプリ層は基本的に子供がMakeCodeのwebエディタ ([https://makecode.microbit.org/](https://makecode.microbit.org/)) でblocksを並べて作る。ローカルで`main.ts`を直接編集することは原則しない。
+アプリ層は子供がMakeCodeのwebエディタ ([https://makecode.microbit.org/](https://makecode.microbit.org/)) でblocksを並べて作る。ローカルからの修正はClaude Codeに頼む。手順は [makecode-app-edit skill](../.claude/skills/makecode-app-edit/SKILL.md) が持っていて、`main.ts`の編集と`main.blocks`の同期 (sync-blocks.sh) までClaude Codeがやる。このプロセスが必要な理由はsync-blocks.shのコメントに書いてある。
 
-理由は[ts/blocksの同期](#tsblocksの同期)に書く。
+人間がやるのはpush後の確認だけ。webエディタでプロジェクトを開き、画面下部のGitHubボタンからpullして、blocks表示を目視確認する。
 
-軽微な修正をローカルから入れるときの手順は次のとおり。
-
-1. `main.ts`を編集する
-2. `pxt build`でコンパイルが通ることを確認する (ブロック化可能なsubsetを逸脱していないかの粗い検知になる)
-3. commitしてpushする
-4. webエディタで対象リポジトリのURLを開く。webエディタがGitHubから読み込んでts→blocksをdecompileし、`main.blocks`が再生成される
-    - mood-cube-grip: [https://makecode.microbit.org/#github:hideosasaki/mood-cube-grip](https://makecode.microbit.org/#github:hideosasaki/mood-cube-grip)
-    - mood-cube-touch: [https://makecode.microbit.org/#github:hideosasaki/mood-cube-touch](https://makecode.microbit.org/#github:hideosasaki/mood-cube-touch)
-    - mood-cube-blocks-test: [https://makecode.microbit.org/#github:hideosasaki/mood-cube-blocks-test](https://makecode.microbit.org/#github:hideosasaki/mood-cube-blocks-test)
-5. blocks表示が想定どおりかを目視で確認する
-6. webエディタの保存ボタンでGitHubに`main.blocks`の更新がpushされる
-
-### ts/blocksの同期
-
-MakeCodeプロジェクトは`main.ts`と`main.blocks` (XML) の双方向同期で成り立っている。`main.ts`だけ書き換えて`main.blocks`を放置すると、blocksエディタで開いたときに次のような壊れ方をする。
-
-- ブロックがグレーアウトする、または消える
-- 「JavaScriptで編集」モードに固定されてblocksに戻れない
-- 子供がblocksエディタで上書き保存した瞬間にts側の変更が吹き飛ぶ
-
-このため、ローカルで`main.ts`を直したら必ずwebエディタで開き直して`main.blocks`を同期させる。同期せずにpushしない。
+- mood-cube-grip: [https://makecode.microbit.org/#github:hideosasaki/mood-cube-grip](https://makecode.microbit.org/#github:hideosasaki/mood-cube-grip)
+- mood-cube-touch: [https://makecode.microbit.org/#github:hideosasaki/mood-cube-touch](https://makecode.microbit.org/#github:hideosasaki/mood-cube-touch)
+- mood-cube-blocks-test: [https://makecode.microbit.org/#github:hideosasaki/mood-cube-blocks-test](https://makecode.microbit.org/#github:hideosasaki/mood-cube-blocks-test)
 
 
 ## やってはいけないこと
 
 ### main.tsだけpushする
 
-直前に書いたとおり、`main.blocks`との同期を取らずにpushすると壊れる。
+`main.blocks`との同期を取らずにpushしても変更がwebエディタに現れず、エディタ側の保存で上書きされて消える (理由はsync-blocks.shのコメント参照)。
 
 ### blocksのsubsetを外れたts構文を書く
 
