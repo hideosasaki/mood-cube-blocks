@@ -11,9 +11,15 @@ test:
 	$(TSC) -p tests/local
 	node built/local-test.js
 
+# P0計測ツール (tools/measure) をビルドしてユニットテストを実行する
+measure:
+	$(TSC) -p tools/measure
+	node --test built/measure/lib.test.js
+
 # MakeCode コンパイラでの型チェック + ローカルテスト
 check:
 	pxt build
 	$(MAKE) test
+	$(MAKE) measure
 
-.PHONY: test check
+.PHONY: test check measure

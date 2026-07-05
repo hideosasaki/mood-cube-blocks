@@ -13,10 +13,11 @@ Math.idiv = function (a: number, b: number): number {
 }
 
 enum AnalogPin { P0, P1 }
+enum Button { A, B }
 enum DigitalPin { P1, P2 }
 enum Dimension { X, Y, Z }
 enum FullPowerSource { A, B, P0 }
-enum IconNames { No, Yes }
+enum IconNames { No, Yes, Chessboard }
 enum LowPowerMode { Wait }
 enum NeoPixelColors { Black }
 enum NeoPixelMode { RGB }
@@ -28,6 +29,7 @@ namespace serial {
     export function writeLine(s: string): void {
         console.log(s)
     }
+    export function writeValue(name: string, value: number): void { }
 }
 
 namespace basic {
@@ -37,6 +39,7 @@ namespace basic {
         if (icon === IconNames.No) process.exitCode = 1
     }
     export function showNumber(n: number): void { }
+    export function forever(body: () => void): void { }
 }
 
 namespace control {
@@ -59,6 +62,7 @@ namespace input {
     export function runningTime(): number { return 0 }
     export function onPinPressed(pin: TouchPin, handler: () => void): void { }
     export function onPinReleased(pin: TouchPin, handler: () => void): void { }
+    export function onButtonPressed(button: Button, handler: () => void): void { }
 }
 
 namespace loops {

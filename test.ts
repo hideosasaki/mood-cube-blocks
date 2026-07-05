@@ -350,3 +350,23 @@ if (_failed === 0) {
     basic.showIcon(IconNames.No)
     basic.showNumber(_failed)
 }
+
+// 実機計測モード: B ボタンで P0 生値のシリアル出力を on/off する (拡張の役割初期化はしない)。
+// Mac 側の集計は tools/measure が行う。手順は .claude/skills/measure-p0 を参照
+let _rawLogging = false
+
+input.onButtonPressed(Button.B, function () {
+    _rawLogging = !_rawLogging
+    if (_rawLogging) {
+        basic.showIcon(IconNames.Chessboard)
+    } else {
+        basic.showIcon(IconNames.Yes)
+    }
+})
+
+basic.forever(function () {
+    if (_rawLogging) {
+        serial.writeValue("p0", pins.analogReadPin(AnalogPin.P0))
+    }
+    basic.pause(50)
+})

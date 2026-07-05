@@ -136,6 +136,12 @@ npm scriptsではなくMakefileなのは、package.jsonがpxtの生成物とし�
 
 シミュレータでは再現しきれない領域 (実際のADC値・容量タッチ・無線通信距離・deepSleepの消費電流) は実機での確認に回す。
 
+### 実機計測ツール (tools/measure)
+
+P0アナログ値 (触感キューブのタッチ、握りキューブの圧力) を実測してしきい値を決めるためのCLI。デバイス側はtest.tsの計測モード (Bボタンで生ログ送信) を使い、Mac側の`tools/measure`がシリアルから統計を取って推奨しきい値を出す。計測セッションは`docs/measurements/`に残す。
+
+手順は [measure-p0 skill](../.claude/skills/measure-p0/SKILL.md) が持っていて、Claude Codeが計測コマンドの実行まで主導する。人間はキューブの物理操作 (置く・刺す・握る) だけを行う。ツールのビルドと単体テストは`make measure` (`make check`にも含まれる)。
+
 ### 実機統合テスト (mood-cube-blocks-testリポジトリ)
 
 `mood-cube-blocks-test`は本拡張を依存に取り、実機にデプロイして手動で挙動確認するためのMakeCodeプロジェクト。ADC・PWM・ラジオ・電力管理など、シミュレータでは確認しきれない要素はこちらで触る。grip/touchとは別系統で、配線テスト用に独立している。
