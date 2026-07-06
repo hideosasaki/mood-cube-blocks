@@ -15,14 +15,14 @@ function record(label: string, samples: number[]): CaptureRecord {
     return { label: label, at: "2026-01-01T00:00:00Z", seconds: 5, stats: computeStats(samples), samples: samples }
 }
 
-test("parseValueLines: writeValue形式の行だけを拾う", function () {
-    const text = "p0:330\r\np0:335\ngarbage\np1:100\np0:12x\n p0:120 \n"
-    assert.deepStrictEqual(parseValueLines(text), [330, 335, 120])
+test("parseValueLines: 4桁固定長の行だけを拾う", function () {
+    const text = "p0:0330\r\np0:0335\ngarbage\np1:0100\np0:012x\n p0:0120 \np0:1023\n"
+    assert.deepStrictEqual(parseValueLines(text), [330, 335, 120, 1023])
 })
 
-test("parseValueLines: 途切れた行や空入力", function () {
+test("parseValueLines: 文字欠けで桁が落ちた行は棄却", function () {
     assert.deepStrictEqual(parseValueLines(""), [])
-    assert.deepStrictEqual(parseValueLines("p0:3"), [3])
+    assert.deepStrictEqual(parseValueLines("p0:716\np0:16\np0:07166\n"), [])
 })
 
 test("percentile: nearest-rank", function () {

@@ -18,7 +18,8 @@ import {
 } from "./lib"
 
 const DEFAULT_SECONDS = 5
-const MIN_SAMPLES_PER_SECOND = 10
+// 20Hz送信だが、DAPLink経由のUART取りこぼしで完全な行は半分程度になることがある
+const MIN_SAMPLES_PER_SECOND = 5
 
 function findPort(): string {
     const ports = fs.readdirSync("/dev")

@@ -33,11 +33,12 @@ export interface GripDecision {
     span: number
 }
 
-// micro:bit の serial.writeValue("p0", v) は "p0:123" 形式の行を出す
+// デバイス側は "p0:0716" の4桁ゼロ埋め固定長で送る (test.ts)。
+// シリアルの文字欠けで桁が落ちた行は形式不一致になり、ここで棄却される
 export function parseValueLines(text: string): number[] {
     const values: number[] = []
     for (const line of text.split("\n")) {
-        const m = line.trim().match(/^p0:(-?\d+)$/)
+        const m = line.trim().match(/^p0:(\d{4})$/)
         if (m) values.push(parseInt(m[1], 10))
     }
     return values

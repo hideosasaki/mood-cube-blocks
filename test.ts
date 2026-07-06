@@ -140,78 +140,85 @@ function runTests(): void {
         assertEq(cubeGrip._rawToStrength(110), 0, "phantom cleared")
     })
 
-    test("touch calibration: stable samples set baseline to median", function () {
+    test("touch ref: first sample seeds the reference", function () {
         cubeTouch._testResetTouch()
-        cubeTouch._applyTouchCalibration([723, 725, 724, 726, 725, 727])
-        assertEq(cubeTouch._testGetBaseline(), 725, "median of 6 samples")
+        cubeTouch._testFeedTouchSample(722)
+        assertEq(cubeTouch._testGetRef(), 722, "seeded")
+        assert(cubeTouch._localPinStuck() === false, "seeding does not stick")
     })
 
-    test("touch calibration: large spread keeps current baseline", function () {
+    test("touch stuck: two consecutive down-edge samples stick, one does not", function () {
         cubeTouch._testResetTouch()
-        cubeTouch._applyTouchCalibration([723, 725, 724, 726, 725, 727])
-        cubeTouch._applyTouchCalibration([540, 600, 700, 725, 900, 1023])
-        assertEq(cubeTouch._testGetBaseline(), 725, "spread over limit rejected")
-    })
-
-    test("touch: uncalibrated feed never sticks", function () {
-        cubeTouch._testResetTouch()
-        cubeTouch._testFeedTouchSample(100)
-        cubeTouch._testFeedTouchSample(100)
-        assert(cubeTouch._localPinStuck() === false, "no baseline, no detection")
-    })
-
-    test("touch stuck: two consecutive deep samples stick, one does not", function () {
-        cubeTouch._testResetTouch()
-        cubeTouch._applyTouchCalibration([725, 725, 725, 725, 725, 725])
-        cubeTouch._testFeedTouchSample(640)
-        assert(cubeTouch._localPinStuck() === false, "1st deep sample: not yet")
-        cubeTouch._testFeedTouchSample(725)
-        cubeTouch._testFeedTouchSample(640)
+        cubeTouch._testFeedTouchSample(722)
+        cubeTouch._testFeedTouchSample(570)
+        assert(cubeTouch._localPinStuck() === false, "1st edge sample: not yet")
+        cubeTouch._testFeedTouchSample(722)
+        cubeTouch._testFeedTouchSample(570)
         assert(cubeTouch._localPinStuck() === false, "non-consecutive: counter reset")
-        cubeTouch._testFeedTouchSample(640)
-        assert(cubeTouch._localPinStuck() === true, "2 consecutive deep samples: stuck")
+        cubeTouch._testFeedTouchSample(570)
+        assert(cubeTouch._localPinStuck() === true, "2 consecutive edge samples: stuck")
     })
 
-    test("touch release: needs full window above release level", function () {
+    test("touch stuck: shallow dip below edge threshold does not stick", function () {
         cubeTouch._testResetTouch()
-        cubeTouch._applyTouchCalibration([725, 725, 725, 725, 725, 725])
-        cubeTouch._testFeedTouchSample(640)
-        cubeTouch._testFeedTouchSample(640)
+        cubeTouch._testFeedTouchSample(722)
+        cubeTouch._testFeedTouchSample(690)
+        cubeTouch._testFeedTouchSample(690)
+        cubeTouch._testFeedTouchSample(690)
+        assert(cubeTouch._localPinStuck() === false, "-32 is below the edge threshold")
+    })
+
+    test("touch: ref snaps to level on stuck edge, quick removal releases", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch._testFeedTouchSample(722)
+        cubeTouch._testFeedTouchSample(570)
+        cubeTouch._testFeedTouchSample(570)
         assert(cubeTouch._localPinStuck() === true, "setup: stuck")
-        for (let i = 0; i < 19; i++) {
-            cubeTouch._testFeedTouchSample(700)
-        }
-        assert(cubeTouch._localPinStuck() === true, "window still contains deep samples")
-        cubeTouch._testFeedTouchSample(700)
-        assert(cubeTouch._localPinStuck() === false, "full window clean: released")
+        assertEq(cubeTouch._testGetRef(), 570, "ref snapped to stuck level")
+        cubeTouch._testFeedTouchSample(722)
+        cubeTouch._testFeedTouchSample(722)
+        assert(cubeTouch._localPinStuck() === false, "quick removal: up edge from snapped ref")
+        assertEq(cubeTouch._testGetRef(), 722, "ref snapped back on release")
     })
 
-    test("touch hysteresis: mid band keeps current state", function () {
+    test("touch: slow decay while stuck does not release", function () {
         cubeTouch._testResetTouch()
-        cubeTouch._applyTouchCalibration([725, 725, 725, 725, 725, 725])
-        cubeTouch._testFeedTouchSample(660)
-        cubeTouch._testFeedTouchSample(660)
-        assert(cubeTouch._localPinStuck() === false, "mid band (between stuck and release levels) does not stick")
-        cubeTouch._testFeedTouchSample(640)
-        cubeTouch._testFeedTouchSample(640)
+        cubeTouch._testFeedTouchSample(722)
+        cubeTouch._testFeedTouchSample(570)
+        cubeTouch._testFeedTouchSample(570)
         assert(cubeTouch._localPinStuck() === true, "setup: stuck")
-        for (let i = 0; i < 25; i++) {
-            cubeTouch._testFeedTouchSample(660)
+        let level = 570
+        for (let i = 0; i < 1000; i++) {
+            if (level < 666) level = level + 1 - (i % 10 === 0 ? 1 : 0)
+            cubeTouch._testFeedTouchSample(level)
         }
-        assert(cubeTouch._localPinStuck() === true, "mid band does not release")
+        assert(cubeTouch._localPinStuck() === true, "decay toward baseline is not an up edge")
+        cubeTouch._testFeedTouchSample(722)
+        cubeTouch._testFeedTouchSample(722)
+        assert(cubeTouch._localPinStuck() === false, "real removal still releases after decay")
     })
 
-    test("touch wake check: deep sample relative to baseline", function () {
+    test("touch: slow drift while idle does not stick", function () {
         cubeTouch._testResetTouch()
-        cubeTouch._applyTouchCalibration([725, 725, 725, 725, 725, 725])
-        assert(cubeTouch._isTouchSample(640) === true, "below baseline-80")
-        assert(cubeTouch._isTouchSample(650) === false, "at threshold boundary")
-        assert(cubeTouch._isTouchSample(725) === false, "at baseline")
+        cubeTouch._testFeedTouchSample(722)
+        let level = 722
+        for (let i = 0; i < 2000; i++) {
+            if (level > 622 && i % 2 === 0) level--
+            cubeTouch._testFeedTouchSample(level)
+        }
+        assert(cubeTouch._localPinStuck() === false, "ref follows slow downward drift")
     })
 
-    test("touch wake check: uncalibrated returns false", function () {
+    test("touch wake check: deep sample relative to ref", function () {
         cubeTouch._testResetTouch()
-        assert(cubeTouch._isTouchSample(0) === false, "no baseline")
+        cubeTouch._testFeedTouchSample(722)
+        assert(cubeTouch._isTouchSample(600) === true, "well below ref")
+        assert(cubeTouch._isTouchSample(700) === false, "small dip")
+    })
+
+    test("touch wake check: unseeded returns false", function () {
+        cubeTouch._testResetTouch()
+        assert(cubeTouch._isTouchSample(0) === false, "no ref yet")
     })
 
     test("grip wake check: press sample relative to baseline", function () {
@@ -431,9 +438,12 @@ if (_failed === 0) {
     basic.showNumber(_failed)
 }
 
-// 実機計測モード: B ボタンで P0 生値のシリアル出力を on/off する (拡張の役割初期化はしない)。
-// Mac 側の集計は tools/measure が行う。手順は .claude/skills/measure-p0 を参照
-let _rawLogging = false
+// 実機計測モード: P0 生値のシリアル出力。起動時から on で、B ボタンで on/off を切り替える
+// (拡張の役割初期化はしない)。Mac 側の集計は tools/measure が行う。手順は .claude/skills/measure-p0 を参照
+let _rawLogging = true
+if (_failed === 0) {
+    basic.showIcon(IconNames.Chessboard)
+}
 
 input.onButtonPressed(Button.B, function () {
     _rawLogging = !_rawLogging
@@ -444,9 +454,15 @@ input.onButtonPressed(Button.B, function () {
     }
 })
 
+// 4桁ゼロ埋めの固定長で送る。シリアルの文字欠けが起きても桁数不一致で受信側が棄却できる。
+// writeLine は1行を32バイトに空白パディングして転送量が4倍になるため writeString を使う
 basic.forever(function () {
     if (_rawLogging) {
-        serial.writeValue("p0", pins.analogReadPin(AnalogPin.P0))
+        let s = "" + pins.analogReadPin(AnalogPin.P0)
+        while (s.length < 4) {
+            s = "0" + s
+        }
+        serial.writeString("p0:" + s + "\n")
     }
-    basic.pause(50)
+    basic.pause(100)
 })

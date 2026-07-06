@@ -52,7 +52,6 @@ namespace cubePower {
         cubeLight.setColor(NeoPixelColors.Black)
         cubeVibe.stop()
         cubeGrip._calibrate()
-        cubeTouch._calibrate()
         power.lowPowerRequest(LowPowerMode.Wait)
         _markActive(input.runningTime())
     }

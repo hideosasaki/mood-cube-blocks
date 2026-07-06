@@ -9,8 +9,12 @@ description: mood cube のP0アナログ値 (触感キューブのタッチ、�
 
 ## 前提
 
+### 計測ファームと動作確認ファームを混ぜない
+
+計測に使えるのは拡張リポジトリのテストビルド (計測ファーム) だけ。blocks-test等のアプリ層ファームは、スリープ (3分無操作で突入しシリアルが止まる)・ラジオ・音・NeoPixelが動いて計測を汚すので使わない。MakeCodeエディタでデバイスに書き込むとアプリ層ファームに置き換わるため、計測セッションの開始時は必ず画面を確認する。Chessboard柄でなければ計測ファームを焼き直してから始める。シリアルの読み手は1本だけ (このツールのリーダーとMakeCodeコンソールは同時に使えない。両方開くと双方文字化けする)。
+
 - デバイス側ファームウェアは拡張リポジトリのテストビルド。`pxt build` で `built/binary.hex` を作り、MICROBITボリュームにコピーして焼く (`cp` で拡張属性エラーが出たら `dd if=built/binary.hex of=/Volumes/MICROBIT/binary.hex`)
-- 起動するとtest.tsの単体テストが走り、チェックマークが出る。その後Bボタンで生ログを開始する (Chessboard柄が出たら送信中。もう一度押すと停止)
+- 起動するとtest.tsの単体テストが走り、パスすると生ログが自動で始まる (Chessboard柄=送信中)。Bボタンで停止/再開を切り替えられる
 - MakeCodeエディタのシリアルコンソールを閉じておく。シリアルポートは1プロセスしか掴めない
 - シリアル読み取りは `tools/measure/serialread.py` (termios直接制御) で行う。`stty` + `cat` はDAPLink CDCからデータが取れないので使わない
 
@@ -18,15 +22,15 @@ description: mood cube のP0アナログ値 (触感キューブのタッチ、�
 
 計測CLIは事前に `make measure` でビルドしておく (単体テストも同時に走る)。
 
-シリアルポートを開くとmicro:bitがリセットされ、Bボタンの生ログ状態も失われる。このため計測ごとにポートを開閉する `capture` コマンドは連続計測に使えない。常駐リーダー+切り出しの方式を使う。
+シリアルポートを開くとmicro:bitがリセットされる。また物理リセットやUSB挿し直しでポート名が変わることがある (例: usbmodem1102→usbmodem11102)。このため計測ごとにポートを開閉する `capture` コマンドは連続計測に使えない。常駐リーダー+切り出しの方式を使う。リーダーはポート自動検出+切断時再接続なので、途中のリセットや再列挙は放っておけば復帰する。
 
 1. 常駐リーダーを起動する (scratchpadに書き続ける)
 
    ```sh
-   nohup python3 tools/measure/serialread.py /dev/cu.usbmodemXXXX 3600 > <scratchpad>/stream.txt 2>/dev/null &
+   nohup python3 tools/measure/serialread.py 3600 > <scratchpad>/stream.txt 2>/dev/null &
    ```
 
-2. リーダー起動でmicro:bitがリセットされるので、ここでユーザーにBボタンを押してもらう (Chessboard表示を確認)
+2. micro:bitがリセットされ、テスト後に生ログが自動で始まる (Chessboard表示をユーザーに確認してもらう)
 3. シナリオごとに「状態を作って維持してください」とチャットで依頼し、返事をもらってから切り出す
 
    ```sh
@@ -34,6 +38,8 @@ description: mood cube のP0アナログ値 (触感キューブのタッチ、�
    ```
 
 4. 全シナリオ終了後、常駐リーダーをkillする
+
+シリアル出力は文字欠けが起きることがある (DAPLink経由のUART取りこぼし)。ingestは完全な形の行しか数えないので統計は汚れないが、サンプル数が足りないときは `--seconds` を伸ばして対応する。
 
 計測対象の状態はすべて静的 (置いたまま・刺したまま・握ったまま) なので、この分担で成立する。プルアップ抵抗の有無など条件を変えて比較するときは、セッションファイルを条件ごとに分ける (混ぜるとdecideが正しく計算できない)。
 
@@ -64,7 +70,7 @@ node built/measure/measure.js decide --mode touch   # 触感キューブ
 node built/measure/measure.js decide --mode grip    # 握りキューブ
 ```
 
-- touch: タッチ信号は個体により持続低下または商用ノイズの振動として下側に現れるため (2026-07-06実測)、ファーム側の判定は「観測窓内の最小値」を前提にする。decideはrest/hand側の絶対最小とfork側p5上限の間のマージンから、刺さった/抜けたのヒステリシス対を提案する。マージン40未満は「しきい値が安全に引けない」と判定される。あわせてbaseline (rest中央値) 相対の推奨定数 `TOUCH_STUCK_DELTA` / `TOUCH_RELEASE_DELTA` を出力する。ファーム (cubeTouch.ts) はbaseline相対定数で判定するので、採用時はこちらを見る。ハードウェア前提は640kΩ (320kΩ×2直列) のP0→3Vプルアップ
+- touch: ファーム (cubeTouch.ts) は適応参照値+エッジ検出で判定する (刺した信号は数十秒で減衰するため水位比較は不成立。2026-07-06実測)。decideの出力する baseline相対の推奨定数は、エッジ量 `TOUCH_STUCK_EDGE` / `TOUCH_RELEASE_EDGE` の参考値として読む。ただし静的シナリオの統計では「刺した瞬間の過渡」と「持ちっぱなしの減衰」が混ざるので、エッジ量の最終判断には60〜120秒の連続記録 (時系列のバケット分析) を併用する。ハードウェア前提は640kΩ (320kΩ×2直列) のP0→3Vプルアップ
 - grip: restのmedian+20をbaseline、maxのp5を強さ9到達点として提案する。この「+20」は `cubeGrip.ts` の `BASELINE_MARGIN` の写し (`tools/measure/lib.ts` の `GRIP_BASELINE_MARGIN`)。拡張側を変えたらツール側も揃える
 
 `list` で当日のセッション内容をいつでも確認できる。

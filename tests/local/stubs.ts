@@ -27,6 +27,7 @@ namespace serial {
         console.log(s)
     }
     export function writeValue(name: string, value: number): void { }
+    export function writeString(s: string): void { }
 }
 
 namespace basic {

@@ -4,6 +4,9 @@
 # usage: capture-slice.sh <stream-file> <label> <session-json> [seconds]
 set -eu
 
+# 非ログインシェルでも node が見つかるよう mise の shims を使う (mise activate 不要)
+PATH="$HOME/.local/share/mise/shims:$PATH"
+
 STREAM=$1
 LABEL=$2
 SESSION=$3

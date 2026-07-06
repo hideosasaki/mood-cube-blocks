@@ -6,23 +6,19 @@ namespace cubeTouch {
     const ACCEL_NORM_MAX = 1600
     const AXIS_DOMINANCE_MIN = 200
 
-    // ピン刺し検知はアナログ振幅方式。根拠データは docs/measurements/2026-07-06-*.json
-    const TOUCH_WINDOW = 20
-    const TOUCH_STUCK_DELTA = 80
-    const TOUCH_RELEASE_DELTA = 50
-    const TOUCH_STUCK_CONFIRM = 2
-    const BASELINE_SAMPLES = 6
-    const BASELINE_INTERVAL_MS = 50
-    const BASELINE_SPREAD_MAX = 50
+    // ピン刺し検知は適応参照値+エッジ検出。根拠データは docs/measurements/2026-07-06-*.json
+    const TOUCH_STUCK_EDGE = 50
+    const TOUCH_RELEASE_EDGE = 40
+    const TOUCH_EDGE_CONFIRM = 2
+    const TOUCH_REF_DIV = 32
 
     let _surface: CubeFace = CubeFace.Face1
     let _candidate: CubeFace = CubeFace.Face1
     let _candidateSince: number = 0
     let _initialized = false
     let _pinStuck: boolean = false
-    let _baseline: number = -1
-    let _ring: number[] = []
-    let _deepCount: number = 0
+    let _ref: number = -1
+    let _edgeCount: number = 0
 
     //% blockId=cubeTouch_surface block="surface"
     export function surface(): number {
@@ -75,7 +71,6 @@ namespace cubeTouch {
     export function _initAsTouch(): void {
         if (_initialized) return
         _initialized = true
-        _calibrate()
 
         loops.everyInterval(SURFACE_SAMPLE_MS, function () {
             if (cubeInternal.role !== CubeRole.Touch) return
@@ -94,72 +89,50 @@ namespace cubeTouch {
         })
     }
 
-    export function _calibrate(): void {
-        if (cubeInternal.role !== CubeRole.Touch) return
-        const samples: number[] = []
-        for (let i = 0; i < BASELINE_SAMPLES; i++) {
-            samples.push(pins.analogReadPin(AnalogPin.P0))
-            basic.pause(BASELINE_INTERVAL_MS)
-        }
-        _applyTouchCalibration(samples)
-    }
-
-    export function _applyTouchCalibration(samples: number[]): void {
-        for (let i = 1; i < samples.length; i++) {
-            const v = samples[i]
-            let j = i - 1
-            while (j >= 0 && samples[j] > v) {
-                samples[j + 1] = samples[j]
-                j--
-            }
-            samples[j + 1] = v
-        }
-        const median = samples[samples.length >> 1]
-        const spread = samples[samples.length - 1] - samples[0]
-        if (spread > BASELINE_SPREAD_MAX) return
-        _baseline = median
-    }
-
     export function _isTouchSample(raw: number): boolean {
-        return _baseline >= 0 && raw < _baseline - TOUCH_STUCK_DELTA
+        return _ref >= 0 && raw < _ref - TOUCH_STUCK_EDGE
     }
 
     function _feedTouchSample(raw: number): void {
-        if (_ring.length < TOUCH_WINDOW) {
-            _ring.push(raw)
-        } else {
-            _ring.shift()
-            _ring.push(raw)
+        if (_ref < 0) {
+            _ref = raw
+            return
         }
-        if (_baseline < 0) return
+        const dev = raw - _ref
 
         if (!_pinStuck) {
-            if (raw < _baseline - TOUCH_STUCK_DELTA) {
-                _deepCount++
-                if (_deepCount >= TOUCH_STUCK_CONFIRM) {
-                    _deepCount = 0
+            if (dev < -TOUCH_STUCK_EDGE) {
+                _edgeCount++
+                if (_edgeCount >= TOUCH_EDGE_CONFIRM) {
+                    _edgeCount = 0
                     _pinStuck = true
+                    _ref = raw
                     cubePower._markActive(input.runningTime())
                     control.raiseEvent(cubeInternal.EVT_SRC_PIN_STUCK, _surface)
                     cubePair._broadcastPin(_surface, true)
+                    return
                 }
             } else {
-                _deepCount = 0
+                _edgeCount = 0
             }
-            return
+        } else {
+            if (dev > TOUCH_RELEASE_EDGE) {
+                _edgeCount++
+                if (_edgeCount >= TOUCH_EDGE_CONFIRM) {
+                    _edgeCount = 0
+                    _pinStuck = false
+                    _ref = raw
+                    cubePower._markActive(input.runningTime())
+                    control.raiseEvent(cubeInternal.EVT_SRC_PIN_RELEASED, _surface)
+                    cubePair._broadcastPin(_surface, false)
+                    return
+                }
+            } else {
+                _edgeCount = 0
+            }
         }
 
-        if (_ring.length < TOUCH_WINDOW) return
-        let windowMin = _ring[0]
-        for (let i = 1; i < _ring.length; i++) {
-            if (_ring[i] < windowMin) windowMin = _ring[i]
-        }
-        if (windowMin > _baseline - TOUCH_RELEASE_DELTA) {
-            _pinStuck = false
-            cubePower._markActive(input.runningTime())
-            control.raiseEvent(cubeInternal.EVT_SRC_PIN_RELEASED, _surface)
-            cubePair._broadcastPin(_surface, false)
-        }
+        _ref += (raw - _ref) / TOUCH_REF_DIV
     }
 
     function updateSurface(): void {
@@ -204,14 +177,13 @@ namespace cubeTouch {
     }
 
     export function _testResetTouch(): void {
-        _baseline = -1
-        _ring = []
-        _deepCount = 0
+        _ref = -1
+        _edgeCount = 0
         _pinStuck = false
     }
 
-    export function _testGetBaseline(): number {
-        return _baseline
+    export function _testGetRef(): number {
+        return _ref
     }
 
     export function _testFeedTouchSample(raw: number): void {
