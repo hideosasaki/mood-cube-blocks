@@ -1,14 +1,13 @@
 // @types/node を持ち込まないための最小宣言。使う API だけを書く
 
 declare module "node:child_process" {
-    export function execFileSync(file: string, args: string[]): unknown
     export function spawn(
         file: string,
         args: string[]
     ): {
         stdout: { on(event: "data", cb: (chunk: unknown) => void): void }
         on(event: "error", cb: (err: unknown) => void): void
-        kill(signal?: string): void
+        on(event: "close", cb: () => void): void
     }
 }
 

@@ -9,22 +9,35 @@ description: mood cube のP0アナログ値 (触感キューブのタッチ、�
 
 ## 前提
 
-- デバイス側ファームウェアは拡張リポジトリのテストビルド。`pxt build` で `built/binary.hex` を作り、MICROBITボリュームにコピーして焼く
+- デバイス側ファームウェアは拡張リポジトリのテストビルド。`pxt build` で `built/binary.hex` を作り、MICROBITボリュームにコピーして焼く (`cp` で拡張属性エラーが出たら `dd if=built/binary.hex of=/Volumes/MICROBIT/binary.hex`)
 - 起動するとtest.tsの単体テストが走り、チェックマークが出る。その後Bボタンで生ログを開始する (Chessboard柄が出たら送信中。もう一度押すと停止)
 - MakeCodeエディタのシリアルコンソールを閉じておく。シリアルポートは1プロセスしか掴めない
-- Macとのシリアル読み取りは `tools/measure` が `stty` + `cat` で行う。初回にポートアクセスの許可を求められたら承認してもらう
+- シリアル読み取りは `tools/measure/serialread.py` (termios直接制御) で行う。`stty` + `cat` はDAPLink CDCからデータが取れないので使わない
 
 ## 手順
 
 計測CLIは事前に `make measure` でビルドしておく (単体テストも同時に走る)。
 
-1回の計測は次のコマンド。5秒間サンプリングして統計を表示し、セッションファイルに追記する。
+シリアルポートを開くとmicro:bitがリセットされ、Bボタンの生ログ状態も失われる。このため計測ごとにポートを開閉する `capture` コマンドは連続計測に使えない。常駐リーダー+切り出しの方式を使う。
 
-```sh
-node built/measure/measure.js capture --label <ラベル> [--seconds 5] [--port /dev/cu.usbmodemXXX]
-```
+1. 常駐リーダーを起動する (scratchpadに書き続ける)
 
-シナリオごとに「状態を作って維持してください」とチャットで依頼し、返事をもらってからcaptureを実行する。計測対象の状態はすべて静的 (置いたまま・刺したまま・握ったまま) なので、この分担で成立する。
+   ```sh
+   nohup python3 tools/measure/serialread.py /dev/cu.usbmodemXXXX 3600 > <scratchpad>/stream.txt 2>/dev/null &
+   ```
+
+2. リーダー起動でmicro:bitがリセットされるので、ここでユーザーにBボタンを押してもらう (Chessboard表示を確認)
+3. シナリオごとに「状態を作って維持してください」とチャットで依頼し、返事をもらってから切り出す
+
+   ```sh
+   tools/measure/capture-slice.sh <scratchpad>/stream.txt <ラベル> docs/measurements/<日付>-<条件>.json
+   ```
+
+4. 全シナリオ終了後、常駐リーダーをkillする
+
+計測対象の状態はすべて静的 (置いたまま・刺したまま・握ったまま) なので、この分担で成立する。プルアップ抵抗の有無など条件を変えて比較するときは、セッションファイルを条件ごとに分ける (混ぜるとdecideが正しく計算できない)。
+
+単発でよい場合 (リセット・B押し直しを許容できる場合) のみ `capture --label <ラベル>` が使える。
 
 ### ラベル規約
 
@@ -51,7 +64,7 @@ node built/measure/measure.js decide --mode touch   # 触感キューブ
 node built/measure/measure.js decide --mode grip    # 握りキューブ
 ```
 
-- touch: rest/hand側のp5下限とfork側のp95上限の間のマージンから、刺さった/抜けたのヒステリシス対を提案する。マージン40未満は「しきい値が安全に引けない」と判定される。この推奨値は容量タッチではなくアナログしきい値方式 (要件改訂で導入予定) の設計材料
+- touch: フォーク刺しは商用ノイズの振動として下側に深く突き刺さる波形で現れるため (2026-07-06実測)、ファーム側の判定は「観測窓内の最小値」を前提にする。decideはrest/hand側の絶対最小とfork側p5上限の間のマージンから、刺さった/抜けたのヒステリシス対を提案する。マージン40未満は「しきい値が安全に引けない」と判定される。この推奨値はアナログ振幅検出方式 (要件改訂で導入予定) の設計材料。ハードウェア前提は640kΩ (320kΩ×2直列) のP0→3Vプルアップ
 - grip: restのmedian+20をbaseline、maxのp5を強さ9到達点として提案する。この「+20」は `cubeGrip.ts` の `BASELINE_MARGIN` の写し (`tools/measure/lib.ts` の `GRIP_BASELINE_MARGIN`)。拡張側を変えたらツール側も揃える
 
 `list` で当日のセッション内容をいつでも確認できる。

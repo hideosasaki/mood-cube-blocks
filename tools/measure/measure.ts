@@ -1,10 +1,11 @@
 // P0 生ログの計測 CLI。使い方は .claude/skills/measure-p0/SKILL.md を参照
 //
 //   node built/measure/measure.js capture --label rest [--seconds 5] [--port /dev/cu.usbmodemXXX] [--session path]
+//   node built/measure/measure.js ingest  --label rest --file raw.txt [--session path]
 //   node built/measure/measure.js list   [--session path]
 //   node built/measure/measure.js decide --mode touch|grip [--session path]
 
-import { execFileSync, spawn } from "node:child_process"
+import { spawn } from "node:child_process"
 import * as fs from "node:fs"
 import {
     CaptureRecord,
@@ -62,18 +63,39 @@ function parseArgs(argv: string[]): { cmd: string; opts: { [key: string]: string
     return { cmd, opts }
 }
 
+// stty + cat では DAPLink CDC からデータが取れない (DTR とtermios設定の問題) ため、
+// termios を直接制御する serialread.py に読み取りを委ねる
 function captureRaw(port: string, seconds: number): Promise<string> {
-    execFileSync("stty", ["-f", port, "115200", "raw"])
     return new Promise(function (resolve, reject) {
         let buf = ""
-        const child = spawn("cat", [port])
+        const child = spawn("python3", ["tools/measure/serialread.py", port, String(seconds)])
         child.on("error", reject)
         child.stdout.on("data", function (chunk) { buf += String(chunk) })
-        setTimeout(function () {
-            child.kill("SIGTERM")
-            resolve(buf)
-        }, seconds * 1000)
+        child.on("close", function () { resolve(buf) })
     })
+}
+
+function storeRecord(label: string, seconds: number, raw: string, sessionPath: string): void {
+    const samples = parseValueLines(raw)
+    if (samples.length < seconds * MIN_SAMPLES_PER_SECOND) {
+        throw new Error(
+            "サンプル数不足 (" + samples.length + "件)。" +
+            "micro:bit の B ボタンで生ログが開始されているか (Chessboard 表示)、" +
+            "MakeCode のシリアルコンソールが閉じているかを確認"
+        )
+    }
+    const record: CaptureRecord = {
+        label: label,
+        at: new Date().toISOString(),
+        seconds: seconds,
+        stats: computeStats(samples),
+        samples: samples,
+    }
+    const records = loadSession(sessionPath)
+    records.push(record)
+    saveSession(sessionPath, records)
+    console.log(formatStatsTable([record]))
+    console.log("saved: " + sessionPath + " (" + records.length + " records)")
 }
 
 async function cmdCapture(opts: { [key: string]: string }): Promise<void> {
@@ -85,27 +107,18 @@ async function cmdCapture(opts: { [key: string]: string }): Promise<void> {
 
     console.log("capture: label=" + label + " port=" + port + " seconds=" + seconds)
     const raw = await captureRaw(port, seconds)
-    const samples = parseValueLines(raw)
-    if (samples.length < seconds * MIN_SAMPLES_PER_SECOND) {
-        throw new Error(
-            "サンプル数不足 (" + samples.length + "件)。" +
-            "micro:bit の B ボタンで生ログが開始されているか (Chessboard 表示)、" +
-            "MakeCode のシリアルコンソールが閉じているかを確認"
-        )
-    }
-    const stats = computeStats(samples)
-    const record: CaptureRecord = {
-        label: label,
-        at: new Date().toISOString(),
-        seconds: seconds,
-        stats: stats,
-        samples: samples,
-    }
-    const records = loadSession(sessionPath)
-    records.push(record)
-    saveSession(sessionPath, records)
-    console.log(formatStatsTable([record]))
-    console.log("saved: " + sessionPath + " (" + records.length + " records)")
+    storeRecord(label, seconds, raw, sessionPath)
+}
+
+// ポートを開きっぱなしの常駐リーダーが書くファイルから、切り出した生テキストを取り込む
+function cmdIngest(opts: { [key: string]: string }): void {
+    const label = opts["label"]
+    if (!label) throw new Error("--label は必須")
+    const file = opts["file"]
+    if (!file) throw new Error("--file は必須")
+    const seconds = opts["seconds"] ? parseInt(opts["seconds"], 10) : DEFAULT_SECONDS
+    const sessionPath = opts["session"] || defaultSessionPath()
+    storeRecord(label, seconds, fs.readFileSync(file, "utf8"), sessionPath)
 }
 
 function cmdList(opts: { [key: string]: string }): void {
@@ -130,10 +143,10 @@ function cmdDecide(opts: { [key: string]: string }): void {
         const off = groupByPrefix(records, ["rest", "hand"])
         const on = groupByPrefix(records, ["fork"])
         const d = decideTouch(off, on)
-        console.log("restFloor (off側 p5 下限): " + d.restFloor)
-        console.log("touchCeiling (on側 p95 上限): " + d.touchCeiling)
+        console.log("offFloor (rest/hand側の絶対最小): " + d.offFloor)
+        console.log("dipCeiling (fork側p5の上限): " + d.dipCeiling)
         console.log("margin: " + d.margin + (d.ok ? "" : "  ← 不足。この電極構成ではしきい値が安全に引けない"))
-        console.log("推奨: 刺さった判定 raw < " + d.stuckBelow + " / 抜けた判定 raw > " + d.releasedAbove)
+        console.log("推奨: 窓内最小値 < " + d.stuckBelow + " で刺さった / 窓内最小値 > " + d.releasedAbove + " で抜けた")
     } else if (mode === "grip") {
         const rest = groupByPrefix(records, ["rest"])
         const max = groupByPrefix(records, ["max"])
@@ -150,10 +163,11 @@ function cmdDecide(opts: { [key: string]: string }): void {
 async function main(): Promise<void> {
     const { cmd, opts } = parseArgs(process.argv.slice(2))
     if (cmd === "capture") await cmdCapture(opts)
+    else if (cmd === "ingest") cmdIngest(opts)
     else if (cmd === "list") cmdList(opts)
     else if (cmd === "decide") cmdDecide(opts)
     else {
-        console.error("usage: measure.js capture|list|decide [--options]")
+        console.error("usage: measure.js capture|ingest|list|decide [--options]")
         process.exitCode = 1
     }
 }

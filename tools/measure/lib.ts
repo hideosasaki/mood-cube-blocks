@@ -19,8 +19,8 @@ export interface CaptureRecord {
 
 export interface TouchDecision {
     ok: boolean
-    restFloor: number
-    touchCeiling: number
+    offFloor: number
+    dipCeiling: number
     margin: number
     stuckBelow: number
     releasedAbove: number
@@ -63,25 +63,26 @@ export function computeStats(samples: number[]): Stats {
     }
 }
 
-// 触感キューブ: タッチで値が下がる前提。
-// off 側 (通常時・素手持ち) の p5 下限と on 側 (フォーク刺し) の p95 上限の間に
-// マージンを取り、その 40%/60% 点をヒステリシス対にする
+// 触感キューブ: フォーク刺しは持続的な低下ではなく、商用ノイズの振動として下側に深く
+// 突き刺さる波形で現れる (2026-07-06 実測)。そのためファームの判定は「観測窓内の最小値」で行う。
+// しきい値は、fork 側の p5 上限 (最も浅い記録の落ち込み代表値) と off 側 (rest/hand) の
+// 絶対最小値の間にマージンを取り、その 40%/60% 点をヒステリシス対にする
 export const TOUCH_MARGIN_MIN = 40
 
 export function decideTouch(offGroup: Stats[], onGroup: Stats[]): TouchDecision {
     if (offGroup.length === 0 || onGroup.length === 0) {
         throw new Error("decideTouch: both off and on groups are required")
     }
-    const restFloor = Math.min(...offGroup.map(s => s.p5))
-    const touchCeiling = Math.max(...onGroup.map(s => s.p95))
-    const margin = restFloor - touchCeiling
+    const offFloor = Math.min(...offGroup.map(s => s.min))
+    const dipCeiling = Math.max(...onGroup.map(s => s.p5))
+    const margin = offFloor - dipCeiling
     return {
         ok: margin >= TOUCH_MARGIN_MIN,
-        restFloor,
-        touchCeiling,
+        offFloor,
+        dipCeiling,
         margin,
-        stuckBelow: Math.round(touchCeiling + margin * 0.4),
-        releasedAbove: Math.round(touchCeiling + margin * 0.6),
+        stuckBelow: Math.round(dipCeiling + margin * 0.4),
+        releasedAbove: Math.round(dipCeiling + margin * 0.6),
     }
 }
 

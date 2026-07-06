@@ -45,30 +45,31 @@ test("computeStats: 未ソート入力", function () {
 })
 
 test("decideTouch: マージン十分ならヒステリシス対を返す", function () {
-    const off = [computeStats([320, 330, 340])]
-    const on = [computeStats([100, 120, 140])]
+    const off = [computeStats([960, 978, 995])]
+    const on = [computeStats([841, 976, 1023])]
     const d = decideTouch(off, on)
-    assert.strictEqual(d.restFloor, 320)
-    assert.strictEqual(d.touchCeiling, 140)
-    assert.strictEqual(d.margin, 180)
+    assert.strictEqual(d.offFloor, 960)
+    assert.strictEqual(d.dipCeiling, 841)
+    assert.strictEqual(d.margin, 119)
     assert.strictEqual(d.ok, true)
-    assert.strictEqual(d.stuckBelow, 212)
-    assert.strictEqual(d.releasedAbove, 248)
+    assert.strictEqual(d.stuckBelow, 889)
+    assert.strictEqual(d.releasedAbove, 912)
 })
 
-test("decideTouch: off/onが重なるとok=false", function () {
-    const off = [computeStats([150, 200, 250])]
-    const on = [computeStats([100, 180, 240])]
+test("decideTouch: forkの落ち込みがoff側最小に迫るとok=false", function () {
+    const off = [computeStats([950, 970, 990])]
+    const on = [computeStats([930, 980, 1023])]
     const d = decideTouch(off, on)
+    assert.strictEqual(d.margin, 20)
     assert.strictEqual(d.ok, false)
 })
 
 test("decideTouch: 複数ラベルの最悪値を採る", function () {
-    const off = [computeStats([320, 330]), computeStats([280, 300])]
-    const on = [computeStats([100, 120]), computeStats([150, 170])]
+    const off = [computeStats([960, 990]), computeStats([940, 980])]
+    const on = [computeStats([800, 1000]), computeStats([860, 1010])]
     const d = decideTouch(off, on)
-    assert.strictEqual(d.restFloor, 280)
-    assert.strictEqual(d.touchCeiling, 170)
+    assert.strictEqual(d.offFloor, 940)
+    assert.strictEqual(d.dipCeiling, 860)
 })
 
 test("decideTouch: グループ欠落はthrow", function () {

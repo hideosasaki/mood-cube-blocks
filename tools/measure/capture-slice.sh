@@ -1,0 +1,18 @@
+#!/bin/sh
+# 常駐リーダー (serialread.py) が書き続けるストリームファイルから直近N秒分を切り出し、
+# measure.js ingest でセッションに取り込む。
+# usage: capture-slice.sh <stream-file> <label> <session-json> [seconds]
+set -eu
+
+STREAM=$1
+LABEL=$2
+SESSION=$3
+SEC=${4:-5}
+
+OFFSET=$(wc -c < "$STREAM")
+sleep "$SEC"
+sleep 1
+CHUNK=$(mktemp)
+tail -c +"$((OFFSET + 1))" "$STREAM" > "$CHUNK"
+node built/measure/measure.js ingest --label "$LABEL" --file "$CHUNK" --session "$SESSION" --seconds "$SEC"
+rm -f "$CHUNK"
