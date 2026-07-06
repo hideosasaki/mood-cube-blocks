@@ -64,7 +64,7 @@ node built/measure/measure.js decide --mode touch   # 触感キューブ
 node built/measure/measure.js decide --mode grip    # 握りキューブ
 ```
 
-- touch: フォーク刺しは商用ノイズの振動として下側に深く突き刺さる波形で現れるため (2026-07-06実測)、ファーム側の判定は「観測窓内の最小値」を前提にする。decideはrest/hand側の絶対最小とfork側p5上限の間のマージンから、刺さった/抜けたのヒステリシス対を提案する。マージン40未満は「しきい値が安全に引けない」と判定される。この推奨値はアナログ振幅検出方式 (要件改訂で導入予定) の設計材料。ハードウェア前提は640kΩ (320kΩ×2直列) のP0→3Vプルアップ
+- touch: タッチ信号は個体により持続低下または商用ノイズの振動として下側に現れるため (2026-07-06実測)、ファーム側の判定は「観測窓内の最小値」を前提にする。decideはrest/hand側の絶対最小とfork側p5上限の間のマージンから、刺さった/抜けたのヒステリシス対を提案する。マージン40未満は「しきい値が安全に引けない」と判定される。あわせてbaseline (rest中央値) 相対の推奨定数 `TOUCH_STUCK_DELTA` / `TOUCH_RELEASE_DELTA` を出力する。ファーム (cubeTouch.ts) はbaseline相対定数で判定するので、採用時はこちらを見る。ハードウェア前提は640kΩ (320kΩ×2直列) のP0→3Vプルアップ
 - grip: restのmedian+20をbaseline、maxのp5を強さ9到達点として提案する。この「+20」は `cubeGrip.ts` の `BASELINE_MARGIN` の写し (`tools/measure/lib.ts` の `GRIP_BASELINE_MARGIN`)。拡張側を変えたらツール側も揃える
 
 `list` で当日のセッション内容をいつでも確認できる。

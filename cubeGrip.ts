@@ -106,6 +106,10 @@ namespace cubeGrip {
         })
     }
 
+    export function _isPressSample(raw: number): boolean {
+        return raw > _rawZeroMax
+    }
+
     export function _rawToStrength(raw: number): number {
         if (raw <= _rawZeroMax) return 0
         if (raw >= RAW_FULL) return 9

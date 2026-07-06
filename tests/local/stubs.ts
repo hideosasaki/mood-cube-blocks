@@ -21,9 +21,6 @@ enum IconNames { No, Yes, Chessboard }
 enum LowPowerMode { Wait }
 enum NeoPixelColors { Black }
 enum NeoPixelMode { RGB }
-enum TouchPin { P0 }
-enum TouchTarget { P0 }
-enum TouchTargetMode { Capacitive }
 
 namespace serial {
     export function writeLine(s: string): void {
@@ -54,14 +51,12 @@ namespace pins {
     export function analogWritePin(pin: AnalogPin, value: number): void { }
     export function analogSetPeriod(pin: AnalogPin, micros: number): void { }
     export function digitalWritePin(pin: DigitalPin, value: number): void { }
-    export function touchSetMode(target: TouchTarget, mode: TouchTargetMode): void { }
+    export function setAudioPinEnabled(enabled: boolean): void { }
 }
 
 namespace input {
     export function acceleration(dim: Dimension): number { return 0 }
     export function runningTime(): number { return 0 }
-    export function onPinPressed(pin: TouchPin, handler: () => void): void { }
-    export function onPinReleased(pin: TouchPin, handler: () => void): void { }
     export function onButtonPressed(button: Button, handler: () => void): void { }
 }
 

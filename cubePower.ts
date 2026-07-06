@@ -25,7 +25,6 @@ namespace cubePower {
 
         power.fullPowerOn(FullPowerSource.A)
         power.fullPowerOn(FullPowerSource.B)
-        power.fullPowerOn(FullPowerSource.P0)
 
         power.fullPowerEvery(PERIODIC_WAKE_MS, function () {
             periodicCheck()
@@ -53,6 +52,7 @@ namespace cubePower {
         cubeLight.setColor(NeoPixelColors.Black)
         cubeVibe.stop()
         cubeGrip._calibrate()
+        cubeTouch._calibrate()
         power.lowPowerRequest(LowPowerMode.Wait)
         _markActive(input.runningTime())
     }
@@ -62,6 +62,11 @@ namespace cubePower {
         const y = input.acceleration(Dimension.Y)
         const z = input.acceleration(Dimension.Z)
         if (_detectMotion(x, y, z)) {
+            _markActive(input.runningTime())
+        }
+        if (cubeInternal.role === CubeRole.Touch && cubeTouch._isTouchSample(pins.analogReadPin(AnalogPin.P0))) {
+            _markActive(input.runningTime())
+        } else if (cubeInternal.role === CubeRole.Grip && cubeGrip._isPressSample(pins.analogReadPin(AnalogPin.P0))) {
             _markActive(input.runningTime())
         }
     }

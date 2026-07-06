@@ -147,6 +147,15 @@ function cmdDecide(opts: { [key: string]: string }): void {
         console.log("dipCeiling (fork側p5の上限): " + d.dipCeiling)
         console.log("margin: " + d.margin + (d.ok ? "" : "  ← 不足。この電極構成ではしきい値が安全に引けない"))
         console.log("推奨: 窓内最小値 < " + d.stuckBelow + " で刺さった / 窓内最小値 > " + d.releasedAbove + " で抜けた")
+        const rest = groupByPrefix(records, ["rest"])
+        if (rest.length > 0) {
+            const baseline = rest[0].median
+            console.log(
+                "baseline相対の推奨定数 (baseline=" + baseline + "): " +
+                "TOUCH_STUCK_DELTA=" + (baseline - d.stuckBelow) +
+                " TOUCH_RELEASE_DELTA=" + (baseline - d.releasedAbove)
+            )
+        }
     } else if (mode === "grip") {
         const rest = groupByPrefix(records, ["rest"])
         const max = groupByPrefix(records, ["max"])

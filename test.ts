@@ -140,6 +140,86 @@ function runTests(): void {
         assertEq(cubeGrip._rawToStrength(110), 0, "phantom cleared")
     })
 
+    test("touch calibration: stable samples set baseline to median", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch._applyTouchCalibration([723, 725, 724, 726, 725, 727])
+        assertEq(cubeTouch._testGetBaseline(), 725, "median of 6 samples")
+    })
+
+    test("touch calibration: large spread keeps current baseline", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch._applyTouchCalibration([723, 725, 724, 726, 725, 727])
+        cubeTouch._applyTouchCalibration([540, 600, 700, 725, 900, 1023])
+        assertEq(cubeTouch._testGetBaseline(), 725, "spread over limit rejected")
+    })
+
+    test("touch: uncalibrated feed never sticks", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch._testFeedTouchSample(100)
+        cubeTouch._testFeedTouchSample(100)
+        assert(cubeTouch._localPinStuck() === false, "no baseline, no detection")
+    })
+
+    test("touch stuck: two consecutive deep samples stick, one does not", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch._applyTouchCalibration([725, 725, 725, 725, 725, 725])
+        cubeTouch._testFeedTouchSample(640)
+        assert(cubeTouch._localPinStuck() === false, "1st deep sample: not yet")
+        cubeTouch._testFeedTouchSample(725)
+        cubeTouch._testFeedTouchSample(640)
+        assert(cubeTouch._localPinStuck() === false, "non-consecutive: counter reset")
+        cubeTouch._testFeedTouchSample(640)
+        assert(cubeTouch._localPinStuck() === true, "2 consecutive deep samples: stuck")
+    })
+
+    test("touch release: needs full window above release level", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch._applyTouchCalibration([725, 725, 725, 725, 725, 725])
+        cubeTouch._testFeedTouchSample(640)
+        cubeTouch._testFeedTouchSample(640)
+        assert(cubeTouch._localPinStuck() === true, "setup: stuck")
+        for (let i = 0; i < 19; i++) {
+            cubeTouch._testFeedTouchSample(700)
+        }
+        assert(cubeTouch._localPinStuck() === true, "window still contains deep samples")
+        cubeTouch._testFeedTouchSample(700)
+        assert(cubeTouch._localPinStuck() === false, "full window clean: released")
+    })
+
+    test("touch hysteresis: mid band keeps current state", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch._applyTouchCalibration([725, 725, 725, 725, 725, 725])
+        cubeTouch._testFeedTouchSample(660)
+        cubeTouch._testFeedTouchSample(660)
+        assert(cubeTouch._localPinStuck() === false, "mid band (between stuck and release levels) does not stick")
+        cubeTouch._testFeedTouchSample(640)
+        cubeTouch._testFeedTouchSample(640)
+        assert(cubeTouch._localPinStuck() === true, "setup: stuck")
+        for (let i = 0; i < 25; i++) {
+            cubeTouch._testFeedTouchSample(660)
+        }
+        assert(cubeTouch._localPinStuck() === true, "mid band does not release")
+    })
+
+    test("touch wake check: deep sample relative to baseline", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch._applyTouchCalibration([725, 725, 725, 725, 725, 725])
+        assert(cubeTouch._isTouchSample(640) === true, "below baseline-80")
+        assert(cubeTouch._isTouchSample(650) === false, "at threshold boundary")
+        assert(cubeTouch._isTouchSample(725) === false, "at baseline")
+    })
+
+    test("touch wake check: uncalibrated returns false", function () {
+        cubeTouch._testResetTouch()
+        assert(cubeTouch._isTouchSample(0) === false, "no baseline")
+    })
+
+    test("grip wake check: press sample relative to baseline", function () {
+        cubeGrip._testResetState()
+        assert(cubeGrip._isPressSample(81) === true, "above default baseline 80")
+        assert(cubeGrip._isPressSample(80) === false, "at baseline")
+    })
+
     test("classifyAccel: norm below min returns 0", function () {
         assertEq(cubeTouch._classifyAccel(100, 100, 100), 0, "norm=300")
     })

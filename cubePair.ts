@@ -11,6 +11,7 @@ namespace cubePair {
     //% blockId=cubePair_setRole block="this cube is %role"
     export function setRole(role: CubeRole): void {
         cubeInternal.role = role
+        pins.setAudioPinEnabled(false)
         ensureRadio()
         if (role === CubeRole.Touch) cubeTouch._initAsTouch()
         else if (role === CubeRole.Grip) cubeGrip._initAsGrip()
