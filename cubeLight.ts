@@ -6,7 +6,9 @@ namespace cubeLight {
 
     function strip(): neopixel.Strip {
         if (!_strip) {
-            _strip = neopixel.create(DigitalPin.P2, 1, NeoPixelMode.RGB)
+            // PL9823 は wire 上のデータ順が RGB。pxt-neopixel の NeoPixelMode.RGB は
+            // 名前に反して GRB 送信 (WS2812 向け) なので、RGB_RGB を指定する
+            _strip = neopixel.create(DigitalPin.P2, 1, NeoPixelMode.RGB_RGB)
         }
         return _strip
     }

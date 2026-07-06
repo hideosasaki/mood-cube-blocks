@@ -483,5 +483,5 @@ basic.forever(function () {
         }
         serial.writeString("p0:" + s + "\n")
     }
-    basic.pause(100)
+    basic.pause(20)
 })

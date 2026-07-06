@@ -20,7 +20,7 @@ enum FullPowerSource { A, B, P0 }
 enum IconNames { No, Yes, Chessboard }
 enum LowPowerMode { Wait }
 enum NeoPixelColors { Black }
-enum NeoPixelMode { RGB }
+enum NeoPixelMode { RGB, RGB_RGB }
 
 namespace serial {
     export function writeLine(s: string): void {
