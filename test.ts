@@ -177,8 +177,25 @@ function runTests(): void {
         assertEq(cubeTouch._testGetRef(), 570, "ref snapped to stuck level")
         cubeTouch._testFeedTouchSample(722)
         cubeTouch._testFeedTouchSample(722)
+        cubeTouch._testFeedTouchSample(722)
+        assert(cubeTouch._localPinStuck() === true, "3 samples: not yet (release needs 4)")
+        cubeTouch._testFeedTouchSample(722)
         assert(cubeTouch._localPinStuck() === false, "quick removal: up edge from snapped ref")
         assertEq(cubeTouch._testGetRef(), 722, "ref snapped back on release")
+    })
+
+    test("touch: brief contact loss while stuck does not release", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch._testFeedTouchSample(722)
+        cubeTouch._testFeedTouchSample(570)
+        cubeTouch._testFeedTouchSample(570)
+        assert(cubeTouch._localPinStuck() === true, "setup: stuck")
+        cubeTouch._testFeedTouchSample(720)
+        cubeTouch._testFeedTouchSample(720)
+        cubeTouch._testFeedTouchSample(721)
+        cubeTouch._testFeedTouchSample(575)
+        cubeTouch._testFeedTouchSample(574)
+        assert(cubeTouch._localPinStuck() === true, "3-sample bounce back filtered")
     })
 
     test("touch: slow decay while stuck does not release", function () {
@@ -193,6 +210,8 @@ function runTests(): void {
             cubeTouch._testFeedTouchSample(level)
         }
         assert(cubeTouch._localPinStuck() === true, "decay toward baseline is not an up edge")
+        cubeTouch._testFeedTouchSample(722)
+        cubeTouch._testFeedTouchSample(722)
         cubeTouch._testFeedTouchSample(722)
         cubeTouch._testFeedTouchSample(722)
         assert(cubeTouch._localPinStuck() === false, "real removal still releases after decay")

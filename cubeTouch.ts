@@ -9,7 +9,8 @@ namespace cubeTouch {
     // ピン刺し検知は適応参照値+エッジ検出。根拠データは docs/measurements/2026-07-06-*.json
     const TOUCH_STUCK_EDGE = 50
     const TOUCH_RELEASE_EDGE = 40
-    const TOUCH_EDGE_CONFIRM = 2
+    const TOUCH_STUCK_CONFIRM = 2
+    const TOUCH_RELEASE_CONFIRM = 4
     const TOUCH_REF_DIV = 32
 
     let _surface: CubeFace = CubeFace.Face1
@@ -100,38 +101,37 @@ namespace cubeTouch {
         }
         const dev = raw - _ref
 
+        // エッジ候補の間は参照値を更新しない。接触瞬断のバウンドで参照値が信号に引き寄せられ、
+        // 本物のエッジが検出できなくなるのを防ぐ
         if (!_pinStuck) {
             if (dev < -TOUCH_STUCK_EDGE) {
                 _edgeCount++
-                if (_edgeCount >= TOUCH_EDGE_CONFIRM) {
+                if (_edgeCount >= TOUCH_STUCK_CONFIRM) {
                     _edgeCount = 0
                     _pinStuck = true
                     _ref = raw
                     cubePower._markActive(input.runningTime())
                     control.raiseEvent(cubeInternal.EVT_SRC_PIN_STUCK, _surface)
                     cubePair._broadcastPin(_surface, true)
-                    return
                 }
-            } else {
-                _edgeCount = 0
+                return
             }
         } else {
             if (dev > TOUCH_RELEASE_EDGE) {
                 _edgeCount++
-                if (_edgeCount >= TOUCH_EDGE_CONFIRM) {
+                if (_edgeCount >= TOUCH_RELEASE_CONFIRM) {
                     _edgeCount = 0
                     _pinStuck = false
                     _ref = raw
                     cubePower._markActive(input.runningTime())
                     control.raiseEvent(cubeInternal.EVT_SRC_PIN_RELEASED, _surface)
                     cubePair._broadcastPin(_surface, false)
-                    return
                 }
-            } else {
-                _edgeCount = 0
+                return
             }
         }
 
+        _edgeCount = 0
         _ref += (raw - _ref) / TOUCH_REF_DIV
     }
 
