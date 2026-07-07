@@ -37,4 +37,8 @@ namespace cubeVibe {
     export function stop(): void {
         write(0)
     }
+
+    // P1 はモータードライバのベースにつながる。放置するとハイインピーダンスのままで
+    // ドライバ入力が不定になりモーターが回るため、ロード時に必ず LOW を書く
+    pins.digitalWritePin(DigitalPin.P1, 0)
 }

@@ -12,6 +12,7 @@ namespace cubeTouch {
     const TOUCH_STUCK_CONFIRM = 2
     const TOUCH_RELEASE_CONFIRM = 4
     const TOUCH_REF_DIV = 32
+    export const TOUCH_WARMUP_SAMPLES = 9
 
     let _surface: CubeFace = CubeFace.Face1
     let _candidate: CubeFace = CubeFace.Face1
@@ -20,6 +21,7 @@ namespace cubeTouch {
     let _pinStuck: boolean = false
     let _ref: number = -1
     let _edgeCount: number = 0
+    let _warmupBuf: number[] = []
 
     //% blockId=cubeTouch_surface block="surface"
     export function surface(): number {
@@ -96,7 +98,13 @@ namespace cubeTouch {
 
     function _feedTouchSample(raw: number): void {
         if (_ref < 0) {
-            _ref = raw
+            // 電源投入の過渡やスイッチ操作時の手の接触が偽エッジの起点にならないよう、
+            // 最初の数サンプルは検出せず中央値で参照値をシードする
+            _warmupBuf.push(raw)
+            if (_warmupBuf.length >= TOUCH_WARMUP_SAMPLES) {
+                _ref = cubeInternal._medianInPlace(_warmupBuf)
+                _warmupBuf = []
+            }
             return
         }
         const dev = raw - _ref
@@ -180,6 +188,7 @@ namespace cubeTouch {
         _ref = -1
         _edgeCount = 0
         _pinStuck = false
+        _warmupBuf = []
     }
 
     export function _testGetRef(): number {

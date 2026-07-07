@@ -53,4 +53,17 @@ namespace cubeInternal {
     export const MSG_RESP_GRIP = "rg"
     export const MSG_QUERY_PIN = "qp"
     export const MSG_RESP_PIN = "rp"
+
+    export function _medianInPlace(samples: number[]): number {
+        for (let i = 1; i < samples.length; i++) {
+            const v = samples[i]
+            let j = i - 1
+            while (j >= 0 && samples[j] > v) {
+                samples[j + 1] = samples[j]
+                j--
+            }
+            samples[j + 1] = v
+        }
+        return samples[samples.length >> 1]
+    }
 }

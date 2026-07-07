@@ -84,16 +84,7 @@ namespace cubeGrip {
     }
 
     export function _applyCalibration(samples: number[]): void {
-        for (let i = 1; i < samples.length; i++) {
-            const v = samples[i]
-            let j = i - 1
-            while (j >= 0 && samples[j] > v) {
-                samples[j + 1] = samples[j]
-                j--
-            }
-            samples[j + 1] = v
-        }
-        const median = samples[samples.length >> 1]
+        const median = cubeInternal._medianInPlace(samples)
         const spread = samples[samples.length - 1] - samples[0]
         if (spread > 100 || median > 200) return
         _rawZeroMax = median + BASELINE_MARGIN
