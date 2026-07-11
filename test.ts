@@ -336,29 +336,29 @@ function runTests(): void {
         assertEq(cubePair._decodeRespValue(v), 9, "payload")
     })
 
-    test("motion: first reading establishes baseline, returns false", function () {
+    test("motion: first reading establishes baseline, diff is zero", function () {
         cubePower._testResetMotion()
-        assert(cubePower._detectMotion(100, 200, 1000) === false, "first reading never triggers")
+        assertEq(cubePower._accelDiff(100, 200, 1000), 0, "first reading never triggers")
     })
 
-    test("motion: stable readings do not trigger", function () {
+    test("motion: stable readings stay small", function () {
         cubePower._testResetMotion()
-        cubePower._detectMotion(100, 200, 1000)
-        assert(cubePower._detectMotion(105, 195, 1003) === false, "tiny noise")
-        assert(cubePower._detectMotion(110, 190, 1005) === false, "still under threshold")
+        cubePower._accelDiff(100, 200, 1000)
+        assertEq(cubePower._accelDiff(105, 195, 1003), 13, "tiny noise")
+        assertEq(cubePower._accelDiff(110, 190, 1005), 12, "still small")
     })
 
-    test("motion: large change triggers wake", function () {
+    test("motion: large change produces large diff", function () {
         cubePower._testResetMotion()
-        cubePower._detectMotion(0, 0, 1024)
-        assert(cubePower._detectMotion(0, 1024, 0) === true, "axis flip: dx+dy+dz=2048 > 200")
+        cubePower._accelDiff(0, 0, 1024)
+        assertEq(cubePower._accelDiff(0, 1024, 0), 2048, "axis flip: dx+dy+dz=2048")
     })
 
     test("motion: baseline tracks current value after each call", function () {
         cubePower._testResetMotion()
-        cubePower._detectMotion(0, 0, 1024)
-        cubePower._detectMotion(0, 1024, 0)
-        assert(cubePower._detectMotion(0, 1024, 0) === false, "now stationary at new orientation")
+        cubePower._accelDiff(0, 0, 1024)
+        cubePower._accelDiff(0, 1024, 0)
+        assertEq(cubePower._accelDiff(0, 1024, 0), 0, "now stationary at new orientation")
     })
 
     test("idle: not idle within timeout window", function () {

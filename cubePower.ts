@@ -10,6 +10,8 @@ namespace cubePower {
     // 根拠: docs/measurements/2026-07-11-motion-fast.json
     const STILL_THRESHOLD = 60
     const PUTDOWN_STILL_MS = 4000
+    // 誤起床の再スリープ判定前にモーション窓1周分+αの観測時間を与える
+    const WAKE_SETTLE_MS = 150
     export const IDLE_TIMEOUT_MS = 180000
 
     export const MOTION_EVT_NONE = 0
@@ -27,6 +29,8 @@ namespace cubePower {
     let _stillBegan = 0
     let _windowMax = 0
     let _windowTick = 0
+    let _sleeping = false
+    let _pendingPickup = false
 
     export function _init(): void {
         if (_initialized) return
@@ -57,19 +61,44 @@ namespace cubePower {
         }
     }
 
+    // fullPowerEveryの周期タイマー (WAKEUPフラグ付き) でもdeepSleepは復帰する。
+    // 起床理由が実活動 (モーション/タッチ→センサーループが_markActive、
+    // ボタン→押下状態を直接確認) でない限り再スリープする。
+    // deepSleepは表示バッファもオーディオも保持するため、無効化せずに
+    // 周期wakeを迎えると直前の表示が再点灯しポップ音が鳴る
     function enterSleep(): void {
         cubeLight.setColor(NeoPixelColors.Black)
         cubeVibe.stop()
         cubeGrip._calibrate()
-        power.lowPowerRequest(LowPowerMode.Wait)
-        _markActive(input.runningTime())
+        led.enable(false)
+        // スピーカーを切断しておくと、毎秒の周期wakeでCODALがオーディオPWMを
+        // 再構築してもピンが再接続されず、突入・起床の各1回以外はポップ音が
+        // 出ない。その各1回はCODAL内部処理によるもので、script層では消せない
+        music.setBuiltInSpeakerEnabled(false)
+        _sleeping = true
+        while (_shouldEnterSleep(input.runningTime())) {
+            power.lowPowerRequest(LowPowerMode.Wait)
+            if (input.buttonIsPressed(Button.A) || input.buttonIsPressed(Button.B)) {
+                _markActive(input.runningTime())
+            } else {
+                basic.pause(WAKE_SETTLE_MS)
+            }
+        }
+        _sleeping = false
+        music.setBuiltInSpeakerEnabled(true)
+        led.enable(true)
+        if (_pendingPickup) {
+            _pendingPickup = false
+            control.raiseEvent(cubeInternal.EVT_SRC_MOTION_PICKUP, 0)
+        }
     }
 
+    // 加速度はactiveMotionLoopだけが読む。ここでも読むと_accelDiffの基準値を
+    // 食い合い、スリープ起床直後の大差分 (PICKUPの唯一の信号) を先に消費して
+    // PICKUPイベントが出たり出なかったりする。手持ち中の覚醒維持は
+    // _isMoving (PICKUP〜PUTDOWN間) で行う
     function periodicCheck(): void {
-        const x = input.acceleration(Dimension.X)
-        const y = input.acceleration(Dimension.Y)
-        const z = input.acceleration(Dimension.Z)
-        if (_detectMotion(x, y, z)) {
+        if (_isMoving) {
             _markActive(input.runningTime())
         }
         if (cubeInternal.role === CubeRole.Touch && cubeTouch._isTouchSample(pins.analogReadPin(AnalogPin.P0))) {
@@ -94,10 +123,6 @@ namespace cubePower {
         _lastAccelY = y
         _lastAccelZ = z
         return dx + dy + dz
-    }
-
-    export function _detectMotion(x: number, y: number, z: number): boolean {
-        return _accelDiff(x, y, z) > MOTION_THRESHOLD
     }
 
     export function _markActive(now: number): void {
@@ -133,7 +158,13 @@ namespace cubePower {
             const evt = _feedMotionSample(diff, now)
             if (evt === MOTION_EVT_PICKUP) {
                 _markActive(now)
-                control.raiseEvent(cubeInternal.EVT_SRC_MOTION_PICKUP, 0)
+                if (_sleeping) {
+                    // 出力復元前にアプリのハンドラが走ると音が欠けるので、
+                    // enterSleepの復元後に発火を持ち越す
+                    _pendingPickup = true
+                } else {
+                    control.raiseEvent(cubeInternal.EVT_SRC_MOTION_PICKUP, 0)
+                }
             } else if (evt === MOTION_EVT_PUTDOWN) {
                 _markActive(now)
                 control.raiseEvent(cubeInternal.EVT_SRC_MOTION_PUTDOWN, 0)

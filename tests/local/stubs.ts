@@ -59,6 +59,15 @@ namespace input {
     export function acceleration(dim: Dimension): number { return 0 }
     export function runningTime(): number { return 0 }
     export function onButtonPressed(button: Button, handler: () => void): void { }
+    export function buttonIsPressed(button: Button): boolean { return false }
+}
+
+namespace music {
+    export function setBuiltInSpeakerEnabled(enabled: boolean): void { }
+}
+
+namespace led {
+    export function enable(on: boolean): void { }
 }
 
 namespace loops {
