@@ -290,10 +290,11 @@ function runTests(): void {
     })
 
     test("classifyAccel: each dominant axis maps to expected face", function () {
+        // 読み値は重力方向 (下向き)。z=-1000は画面が上 → 表面のface6が上面
         const xs = [0, 0, 1000, -1000, 0, 0]
         const ys = [0, 0, 0, 0, 1000, -1000]
         const zs = [1000, -1000, 0, 0, 0, 0]
-        const faces = [CubeFace.Face6, CubeFace.Face1, CubeFace.Face3, CubeFace.Face4, CubeFace.Face2, CubeFace.Face5]
+        const faces = [CubeFace.Face1, CubeFace.Face6, CubeFace.Face4, CubeFace.Face3, CubeFace.Face2, CubeFace.Face5]
         for (let i = 0; i < xs.length; i++) {
             assertEq(cubeTouch._classifyAccel(xs[i], ys[i], zs[i]), faces[i], "case " + i)
         }

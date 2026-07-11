@@ -182,9 +182,12 @@ namespace cubeTouch {
         else second = ax > ay ? ax : ay
         if (maxVal - second < AXIS_DOMINANCE_MIN) return 0
 
-        if (maxAxis === 0) return x > 0 ? CubeFace.Face3 : CubeFace.Face4
+        // 面番号は雄サイコロ配置 (1・2・3の頂点で時計回り、対面の和7)。
+        // 1=micro:bit裏面, 6=表面, 2=エッジコネクタ側, 5=ロゴ側, 3=Bボタン側, 4=Aボタン側。
+        // 読み値は重力方向 (下向き) を指すので、上面は符号の逆側
+        if (maxAxis === 0) return x > 0 ? CubeFace.Face4 : CubeFace.Face3
         if (maxAxis === 1) return y > 0 ? CubeFace.Face2 : CubeFace.Face5
-        return z > 0 ? CubeFace.Face6 : CubeFace.Face1
+        return z > 0 ? CubeFace.Face1 : CubeFace.Face6
     }
 
     export function _testResetTouch(): void {
