@@ -15,6 +15,10 @@ export interface CaptureRecord {
     seconds: number
     stats: Stats
     samples: number[]
+    // 省略時は "p0"。decideがp0値とモーション差分を混同しないための記録種別
+    kind?: string
+    // モーション計測 (--kind motion) のみ: classifyAccel≠0 だったサンプルの割合
+    poseRate?: number
 }
 
 export interface TouchDecision {
@@ -33,6 +37,19 @@ export interface GripDecision {
     span: number
 }
 
+export interface MotionSample {
+    diff: number
+    face: number
+}
+
+export interface MotionDecision {
+    ok: boolean
+    deskCeiling: number
+    handFloor: number
+    margin: number
+    stillThreshold: number
+}
+
 // デバイス側は "p0:0716" の4桁ゼロ埋め固定長で送る (test.ts)。
 // シリアルの文字欠けで桁が落ちた行は形式不一致になり、ここで棄却される
 export function parseValueLines(text: string): number[] {
@@ -42,6 +59,25 @@ export function parseValueLines(text: string): number[] {
         if (m) values.push(parseInt(m[1], 10))
     }
     return values
+}
+
+// デバイス側は "mo:0012:1" (3軸差分和4桁ゼロ埋め : classifyAccel結果1桁) で送る (test.ts)
+export function parseMotionLines(text: string): MotionSample[] {
+    const samples: MotionSample[] = []
+    for (const line of text.split("\n")) {
+        const m = line.trim().match(/^mo:(\d{4}):([0-6])$/)
+        if (m) samples.push({ diff: parseInt(m[1], 10), face: parseInt(m[2], 10) })
+    }
+    return samples
+}
+
+export function poseRate(samples: MotionSample[]): number {
+    if (samples.length === 0) return 0
+    let posed = 0
+    for (const s of samples) {
+        if (s.face !== 0) posed++
+    }
+    return posed / samples.length
 }
 
 export function percentile(sorted: number[], p: number): number {
@@ -101,6 +137,26 @@ export function decideGrip(rest: Stats, max: Stats): GripDecision {
         baseline,
         rawFull,
         span,
+    }
+}
+
+// 置き検知 (PUTDOWN) 用の静止低閾値: 机置きの p95 と手持ち系の p5 下限の間に
+// マージンを確認し、中点を推奨値にする。PICKUP側の閾値 (200) はここでは扱わない
+export const MOTION_MARGIN_MIN = 20
+
+export function decideMotion(desk: Stats, hand: Stats[]): MotionDecision {
+    if (hand.length === 0) {
+        throw new Error("decideMotion: hand group is required")
+    }
+    const deskCeiling = desk.p95
+    const handFloor = Math.min(...hand.map(s => s.p5))
+    const margin = handFloor - deskCeiling
+    return {
+        ok: margin >= MOTION_MARGIN_MIN,
+        deskCeiling,
+        handFloor,
+        margin,
+        stillThreshold: Math.round((deskCeiling + handFloor) / 2),
     }
 }
 

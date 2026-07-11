@@ -1,8 +1,15 @@
 namespace cubePower {
     const MOTION_THRESHOLD = 200
     const PERIODIC_WAKE_MS = 1000
-    const ACTIVE_SAMPLE_MS = 100
-    const PUTDOWN_STILL_MS = 1500
+    // 静止判定は20msサンプリングの100ms窓最大値で行う。10Hzサンプリングだと
+    // 手の微動作がエイリアスで消え、机置きと区別できない (2026-07-11実測)
+    const ACTIVE_SAMPLE_MS = 20
+    const MOTION_WINDOW_TICKS = 5
+    // 自然な手持ちの微動作 (実測p95=92) はSTILL_THRESHOLD超えでタイマーを
+    // リセットし続け、机置き (実測max=36) でだけ静止窓が完走する。
+    // 根拠: docs/measurements/2026-07-11-motion-fast.json
+    const STILL_THRESHOLD = 60
+    const PUTDOWN_STILL_MS = 4000
     export const IDLE_TIMEOUT_MS = 180000
 
     export const MOTION_EVT_NONE = 0
@@ -18,6 +25,8 @@ namespace cubePower {
     let _accelInitialized = false
     let _isMoving = false
     let _stillBegan = 0
+    let _windowMax = 0
+    let _windowTick = 0
 
     export function _init(): void {
         if (_initialized) return
@@ -70,13 +79,13 @@ namespace cubePower {
         }
     }
 
-    export function _detectMotion(x: number, y: number, z: number): boolean {
+    export function _accelDiff(x: number, y: number, z: number): number {
         if (!_accelInitialized) {
             _lastAccelX = x
             _lastAccelY = y
             _lastAccelZ = z
             _accelInitialized = true
-            return false
+            return 0
         }
         const dx = Math.abs(x - _lastAccelX)
         const dy = Math.abs(y - _lastAccelY)
@@ -84,7 +93,11 @@ namespace cubePower {
         _lastAccelX = x
         _lastAccelY = y
         _lastAccelZ = z
-        return dx + dy + dz > MOTION_THRESHOLD
+        return dx + dy + dz
+    }
+
+    export function _detectMotion(x: number, y: number, z: number): boolean {
+        return _accelDiff(x, y, z) > MOTION_THRESHOLD
     }
 
     export function _markActive(now: number): void {
@@ -115,9 +128,9 @@ namespace cubePower {
             const x = input.acceleration(Dimension.X)
             const y = input.acceleration(Dimension.Y)
             const z = input.acceleration(Dimension.Z)
-            const moving = _detectMotion(x, y, z)
+            const diff = _accelDiff(x, y, z)
             const now = input.runningTime()
-            const evt = _stepMotion(moving, now)
+            const evt = _feedMotionSample(diff, now)
             if (evt === MOTION_EVT_PICKUP) {
                 _markActive(now)
                 control.raiseEvent(cubeInternal.EVT_SRC_MOTION_PICKUP, 0)
@@ -128,10 +141,20 @@ namespace cubePower {
         }
     }
 
-    export function _stepMotion(moving: boolean, now: number): number {
-        if (moving) {
+    export function _feedMotionSample(diff: number, now: number): number {
+        if (diff > _windowMax) _windowMax = diff
+        _windowTick++
+        if (_windowTick < MOTION_WINDOW_TICKS) return MOTION_EVT_NONE
+        const evt = _stepMotion(_windowMax, now)
+        _windowTick = 0
+        _windowMax = 0
+        return evt
+    }
+
+    export function _stepMotion(diff: number, now: number): number {
+        if (diff >= STILL_THRESHOLD) {
             _stillBegan = 0
-            if (!_isMoving) {
+            if (!_isMoving && diff > MOTION_THRESHOLD) {
                 _isMoving = true
                 return MOTION_EVT_PICKUP
             }
@@ -160,6 +183,8 @@ namespace cubePower {
     export function _testResetMotionState(): void {
         _isMoving = false
         _stillBegan = 0
+        _windowMax = 0
+        _windowTick = 0
     }
 
     export function _testResetIdle(): void {

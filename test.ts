@@ -428,52 +428,94 @@ function runTests(): void {
         assert(cubePower._shouldEnterSleep(192000) === true, "beacon done, idle past timeout")
     })
 
-    test("stepMotion: still + no motion stays still, no event", function () {
+    test("stepMotion: still + quiet diff stays still, no event", function () {
         cubePower._testResetMotionState()
-        assertEq(cubePower._stepMotion(false, 1000), cubePower.MOTION_EVT_NONE, "no event")
+        assertEq(cubePower._stepMotion(30, 1000), cubePower.MOTION_EVT_NONE, "no event")
     })
 
-    test("stepMotion: still + motion -> PICKUP", function () {
+    test("stepMotion: still + large diff -> PICKUP", function () {
         cubePower._testResetMotionState()
-        assertEq(cubePower._stepMotion(true, 1000), cubePower.MOTION_EVT_PICKUP, "pickup fired")
+        assertEq(cubePower._stepMotion(250, 1000), cubePower.MOTION_EVT_PICKUP, "pickup fired")
     })
 
-    test("stepMotion: continued motion does not re-fire PICKUP", function () {
+    test("stepMotion: still + medium diff does not fire PICKUP", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(true, 1000)
-        assertEq(cubePower._stepMotion(true, 1050), cubePower.MOTION_EVT_NONE, "no re-fire")
-        assertEq(cubePower._stepMotion(true, 1100), cubePower.MOTION_EVT_NONE, "still no re-fire")
+        assertEq(cubePower._stepMotion(100, 1000), cubePower.MOTION_EVT_NONE, "under pickup threshold")
+        assertEq(cubePower._stepMotion(250, 1100), cubePower.MOTION_EVT_PICKUP, "still in still state, so next large diff fires")
     })
 
-    test("stepMotion: moving + first still does not fire yet", function () {
+    test("stepMotion: continued large diff does not re-fire PICKUP", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(true, 1000)
-        assertEq(cubePower._stepMotion(false, 1100), cubePower.MOTION_EVT_NONE, "still timer started")
+        cubePower._stepMotion(250, 1000)
+        assertEq(cubePower._stepMotion(250, 1050), cubePower.MOTION_EVT_NONE, "no re-fire")
+        assertEq(cubePower._stepMotion(250, 1100), cubePower.MOTION_EVT_NONE, "still no re-fire")
     })
 
-    test("stepMotion: PUTDOWN fires after still continues past 1500ms", function () {
+    test("stepMotion: moving + first quiet sample does not fire yet", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(true, 1000)
-        cubePower._stepMotion(false, 2000)
-        assertEq(cubePower._stepMotion(false, 3000), cubePower.MOTION_EVT_NONE, "1000ms still, not yet")
-        assertEq(cubePower._stepMotion(false, 3500), cubePower.MOTION_EVT_PUTDOWN, "1500ms still, fires")
+        cubePower._stepMotion(250, 1000)
+        assertEq(cubePower._stepMotion(30, 1100), cubePower.MOTION_EVT_NONE, "still timer started")
     })
 
-    test("stepMotion: motion during still window aborts putdown", function () {
+    test("stepMotion: PUTDOWN fires after quiet continues past 4000ms", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(true, 1000)
-        cubePower._stepMotion(false, 2000)
-        assertEq(cubePower._stepMotion(true, 2500), cubePower.MOTION_EVT_NONE, "motion resumes, no event")
-        assertEq(cubePower._stepMotion(false, 3000), cubePower.MOTION_EVT_NONE, "still restart")
-        assertEq(cubePower._stepMotion(false, 4500), cubePower.MOTION_EVT_PUTDOWN, "1500ms from new still start")
+        cubePower._stepMotion(250, 1000)
+        cubePower._stepMotion(30, 2000)
+        assertEq(cubePower._stepMotion(30, 5000), cubePower.MOTION_EVT_NONE, "3000ms still, not yet")
+        assertEq(cubePower._stepMotion(30, 6000), cubePower.MOTION_EVT_PUTDOWN, "4000ms still, fires")
     })
 
-    test("stepMotion: PUTDOWN restores still state, next motion fires PICKUP", function () {
+    test("stepMotion: medium diff resets the still timer (natural hand hold)", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(true, 1000)
-        cubePower._stepMotion(false, 2000)
-        cubePower._stepMotion(false, 3500)
-        assertEq(cubePower._stepMotion(true, 4000), cubePower.MOTION_EVT_PICKUP, "pickup after putdown")
+        cubePower._stepMotion(250, 1000)
+        cubePower._stepMotion(30, 2000)
+        assertEq(cubePower._stepMotion(100, 3000), cubePower.MOTION_EVT_NONE, "medium diff, timer reset")
+        assertEq(cubePower._stepMotion(30, 4000), cubePower.MOTION_EVT_NONE, "still restart")
+        assertEq(cubePower._stepMotion(30, 7900), cubePower.MOTION_EVT_NONE, "3900ms from restart")
+        assertEq(cubePower._stepMotion(30, 8000), cubePower.MOTION_EVT_PUTDOWN, "4000ms from restart")
+    })
+
+    test("stepMotion: large diff during still window aborts putdown", function () {
+        cubePower._testResetMotionState()
+        cubePower._stepMotion(250, 1000)
+        cubePower._stepMotion(30, 2000)
+        assertEq(cubePower._stepMotion(250, 2500), cubePower.MOTION_EVT_NONE, "motion resumes, no event")
+        assertEq(cubePower._stepMotion(30, 3000), cubePower.MOTION_EVT_NONE, "still restart")
+        assertEq(cubePower._stepMotion(30, 7000), cubePower.MOTION_EVT_PUTDOWN, "4000ms from new still start")
+    })
+
+    test("stepMotion: PUTDOWN restores still state, next large diff fires PICKUP", function () {
+        cubePower._testResetMotionState()
+        cubePower._stepMotion(250, 1000)
+        cubePower._stepMotion(30, 2000)
+        cubePower._stepMotion(30, 6000)
+        assertEq(cubePower._stepMotion(250, 6500), cubePower.MOTION_EVT_PICKUP, "pickup after putdown")
+    })
+
+    test("feedMotionSample: decision uses window max every 5th sample", function () {
+        cubePower._testResetMotionState()
+        assertEq(cubePower._feedMotionSample(0, 1000), cubePower.MOTION_EVT_NONE, "sample 1")
+        assertEq(cubePower._feedMotionSample(250, 1020), cubePower.MOTION_EVT_NONE, "spike mid-window, no decision yet")
+        assertEq(cubePower._feedMotionSample(0, 1040), cubePower.MOTION_EVT_NONE, "sample 3")
+        assertEq(cubePower._feedMotionSample(0, 1060), cubePower.MOTION_EVT_NONE, "sample 4")
+        assertEq(cubePower._feedMotionSample(0, 1080), cubePower.MOTION_EVT_PICKUP, "window max 250 fires at 5th sample")
+    })
+
+    test("feedMotionSample: window max does not leak into later windows", function () {
+        cubePower._testResetMotionState()
+        cubePower._feedMotionSample(250, 1000)
+        cubePower._feedMotionSample(0, 1020)
+        cubePower._feedMotionSample(0, 1040)
+        cubePower._feedMotionSample(0, 1060)
+        assertEq(cubePower._feedMotionSample(0, 1080), cubePower.MOTION_EVT_PICKUP, "spike window fires")
+        for (let t = 0; t < 4; t++) {
+            assertEq(cubePower._feedMotionSample(30, 2000 + t * 20), cubePower.MOTION_EVT_NONE, "quiet window 1 sample " + t)
+        }
+        assertEq(cubePower._feedMotionSample(30, 2080), cubePower.MOTION_EVT_NONE, "still timer starts")
+        for (let t = 0; t < 4; t++) {
+            assertEq(cubePower._feedMotionSample(30, 7000 + t * 20), cubePower.MOTION_EVT_NONE, "quiet window 2 sample " + t)
+        }
+        assertEq(cubePower._feedMotionSample(30, 7080), cubePower.MOTION_EVT_PUTDOWN, "putdown fires; a leaked spike would have reset the timer")
     })
 }
 
@@ -505,13 +547,38 @@ input.onButtonPressed(Button.B, function () {
 
 // 4桁ゼロ埋めの固定長で送る。シリアルの文字欠けが起きても桁数不一致で受信側が棄却できる。
 // writeLine は1行を32バイトに空白パディングして転送量が4倍になるため writeString を使う
+//
+// p0 行 (20ms周期) に加え、モーション実測用の mo 行を100ms周期で混在させる。
+// 差分は20msごとに取り、100ms窓内の最大値を送る (10Hzサンプリングだと手の振戦が
+// エイリアスして消えるため。2026-07-11実測)。形式は mo:<3軸差分和4桁>:<classifyAccel結果1桁>
+function _pad4(n: number): string {
+    let s = "" + Math.min(n, 9999)
+    while (s.length < 4) {
+        s = "0" + s
+    }
+    return s
+}
+
+// 差分計算は cubePower._accelDiff を共用する。この計測ビルドは役割を初期化しない
+// (cubePower._init が呼ばれない) ので、_accelDiff の内部状態を奪い合う相手はいない
+let _moTick = 0
+let _moWindowMax = 0
 basic.forever(function () {
     if (_rawLogging) {
-        let s = "" + pins.analogReadPin(AnalogPin.P0)
-        while (s.length < 4) {
-            s = "0" + s
+        serial.writeString("p0:" + _pad4(pins.analogReadPin(AnalogPin.P0)) + "\n")
+
+        const mx = input.acceleration(Dimension.X)
+        const my = input.acceleration(Dimension.Y)
+        const mz = input.acceleration(Dimension.Z)
+        const diff = cubePower._accelDiff(mx, my, mz)
+        if (diff > _moWindowMax) _moWindowMax = diff
+
+        _moTick++
+        if (_moTick >= 5) {
+            _moTick = 0
+            serial.writeString("mo:" + _pad4(_moWindowMax) + ":" + cubeTouch._classifyAccel(mx, my, mz) + "\n")
+            _moWindowMax = 0
         }
-        serial.writeString("p0:" + s + "\n")
     }
     basic.pause(20)
 })

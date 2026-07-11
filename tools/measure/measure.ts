@@ -1,9 +1,9 @@
 // P0 生ログの計測 CLI。使い方は .claude/skills/measure-p0/SKILL.md を参照
 //
-//   node built/measure/measure.js capture --label rest [--seconds 5] [--port /dev/cu.usbmodemXXX] [--session path]
-//   node built/measure/measure.js ingest  --label rest --file raw.txt [--session path]
+//   node built/measure/measure.js capture --label rest [--seconds 5] [--port /dev/cu.usbmodemXXX] [--session path] [--kind p0|motion]
+//   node built/measure/measure.js ingest  --label rest --file raw.txt [--session path] [--kind p0|motion]
 //   node built/measure/measure.js list   [--session path]
-//   node built/measure/measure.js decide --mode touch|grip [--session path]
+//   node built/measure/measure.js decide --mode touch|grip|motion [--session path]
 
 import { spawn } from "node:child_process"
 import * as fs from "node:fs"
@@ -11,15 +11,20 @@ import {
     CaptureRecord,
     computeStats,
     decideGrip,
+    decideMotion,
     decideTouch,
     formatStatsTable,
     groupByPrefix,
+    parseMotionLines,
     parseValueLines,
+    poseRate,
 } from "./lib"
 
 const DEFAULT_SECONDS = 5
-// 20Hz送信だが、DAPLink経由のUART取りこぼしで完全な行は半分程度になることがある
+// p0は20Hz送信だが、DAPLink経由のUART取りこぼしで完全な行は半分程度になることがある。
+// motionは10Hz送信なので下限も半分にする
 const MIN_SAMPLES_PER_SECOND = 5
+const MIN_MOTION_SAMPLES_PER_SECOND = 3
 
 function findPort(): string {
     const ports = fs.readdirSync("/dev")
@@ -76,9 +81,23 @@ function captureRaw(port: string, seconds: number): Promise<string> {
     })
 }
 
-function storeRecord(label: string, seconds: number, raw: string, sessionPath: string): void {
-    const samples = parseValueLines(raw)
-    if (samples.length < seconds * MIN_SAMPLES_PER_SECOND) {
+function storeRecord(label: string, seconds: number, raw: string, sessionPath: string, kind: string | undefined): void {
+    if (kind !== undefined && kind !== "p0" && kind !== "motion") {
+        throw new Error("--kind は p0 か motion: " + kind)
+    }
+    let samples: number[]
+    let rate: number | undefined
+    let minPerSecond: number
+    if (kind === "motion") {
+        const motion = parseMotionLines(raw)
+        samples = motion.map(function (s) { return s.diff })
+        rate = Math.round(poseRate(motion) * 100) / 100
+        minPerSecond = MIN_MOTION_SAMPLES_PER_SECOND
+    } else {
+        samples = parseValueLines(raw)
+        minPerSecond = MIN_SAMPLES_PER_SECOND
+    }
+    if (samples.length < seconds * minPerSecond) {
         throw new Error(
             "サンプル数不足 (" + samples.length + "件)。" +
             "micro:bit の B ボタンで生ログが開始されているか (Chessboard 表示)、" +
@@ -92,6 +111,8 @@ function storeRecord(label: string, seconds: number, raw: string, sessionPath: s
         stats: computeStats(samples),
         samples: samples,
     }
+    if (kind === "motion") record.kind = kind
+    if (rate !== undefined) record.poseRate = rate
     const records = loadSession(sessionPath)
     records.push(record)
     saveSession(sessionPath, records)
@@ -108,7 +129,7 @@ async function cmdCapture(opts: { [key: string]: string }): Promise<void> {
 
     console.log("capture: label=" + label + " port=" + port + " seconds=" + seconds)
     const raw = await captureRaw(port, seconds)
-    storeRecord(label, seconds, raw, sessionPath)
+    storeRecord(label, seconds, raw, sessionPath, opts["kind"])
 }
 
 // ポートを開きっぱなしの常駐リーダーが書くファイルから、切り出した生テキストを取り込む
@@ -119,7 +140,7 @@ function cmdIngest(opts: { [key: string]: string }): void {
     if (!file) throw new Error("--file は必須")
     const seconds = opts["seconds"] ? parseInt(opts["seconds"], 10) : DEFAULT_SECONDS
     const sessionPath = opts["session"] || defaultSessionPath()
-    storeRecord(label, seconds, fs.readFileSync(file, "utf8"), sessionPath)
+    storeRecord(label, seconds, fs.readFileSync(file, "utf8"), sessionPath, opts["kind"])
 }
 
 function cmdList(opts: { [key: string]: string }): void {
@@ -139,16 +160,20 @@ function cmdDecide(opts: { [key: string]: string }): void {
     console.log(formatStatsTable(records))
     console.log("")
 
+    // 同じセッションにp0とモーションが混在していても互いのdecideを汚さないよう、
+    // 記録種別でフィルタする (kind省略の旧記録はp0扱い)
     const mode = opts["mode"]
+    const p0Records = records.filter(function (r) { return r.kind !== "motion" })
+    const motionRecords = records.filter(function (r) { return r.kind === "motion" })
     if (mode === "touch") {
-        const off = groupByPrefix(records, ["rest", "hand"])
-        const on = groupByPrefix(records, ["fork"])
+        const off = groupByPrefix(p0Records, ["rest", "hand"])
+        const on = groupByPrefix(p0Records, ["fork"])
         const d = decideTouch(off, on)
         console.log("offFloor (rest/hand側の絶対最小): " + d.offFloor)
         console.log("dipCeiling (fork側p5の上限): " + d.dipCeiling)
         console.log("margin: " + d.margin + (d.ok ? "" : "  ← 不足。この電極構成ではしきい値が安全に引けない"))
         console.log("推奨: 窓内最小値 < " + d.stuckBelow + " で刺さった / 窓内最小値 > " + d.releasedAbove + " で抜けた")
-        const rest = groupByPrefix(records, ["rest"])
+        const rest = groupByPrefix(p0Records, ["rest"])
         if (rest.length > 0) {
             const baseline = rest[0].median
             console.log(
@@ -158,15 +183,29 @@ function cmdDecide(opts: { [key: string]: string }): void {
             )
         }
     } else if (mode === "grip") {
-        const rest = groupByPrefix(records, ["rest"])
-        const max = groupByPrefix(records, ["max"])
+        const rest = groupByPrefix(p0Records, ["rest"])
+        const max = groupByPrefix(p0Records, ["max"])
         if (rest.length === 0 || max.length === 0) throw new Error("rest と max のラベルが必要")
         const d = decideGrip(rest[0], max[0])
         console.log("baseline (強さ0上限): " + d.baseline)
         console.log("rawFull (強さ9到達点): " + d.rawFull)
         console.log("span: " + d.span + (d.ok ? "" : "  ← 不足。分圧抵抗かセンサ素材の見直しを検討"))
+    } else if (mode === "motion") {
+        const desk = groupByPrefix(motionRecords, ["desk"])
+        const hand = groupByPrefix(motionRecords, ["hand", "palm"])
+        if (desk.length === 0) throw new Error("desk のラベルが必要")
+        const d = decideMotion(desk[0], hand)
+        console.log("deskCeiling (机置きp95): " + d.deskCeiling)
+        console.log("handFloor (手持ち系p5の下限): " + d.handFloor)
+        console.log("margin: " + d.margin + (d.ok ? "" : "  ← 不足。手持ちと机置きが差分和で分離できていない"))
+        console.log("推奨: STILL_THRESHOLD=" + d.stillThreshold + " (差分和がこれ未満で静止扱い)")
+        for (const r of motionRecords) {
+            if (r.poseRate !== undefined) {
+                console.log("poseRate " + r.label + ": " + r.poseRate + " (classifyAccel≠0 の割合)")
+            }
+        }
     } else {
-        throw new Error("--mode touch または --mode grip を指定")
+        throw new Error("--mode touch / grip / motion を指定")
     }
 }
 

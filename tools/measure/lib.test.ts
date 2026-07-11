@@ -3,10 +3,13 @@ import assert = require("node:assert")
 import {
     computeStats,
     decideGrip,
+    decideMotion,
     decideTouch,
     groupByPrefix,
+    parseMotionLines,
     parseValueLines,
     percentile,
+    poseRate,
     CaptureRecord,
     Stats,
 } from "./lib"
@@ -23,6 +26,57 @@ test("parseValueLines: 4桁固定長の行だけを拾う", function () {
 test("parseValueLines: 文字欠けで桁が落ちた行は棄却", function () {
     assert.deepStrictEqual(parseValueLines(""), [])
     assert.deepStrictEqual(parseValueLines("p0:716\np0:16\np0:07166\n"), [])
+})
+
+test("parseMotionLines: mo:4桁:1桁 の行だけを拾う", function () {
+    const text = "mo:0012:1\r\nmo:0345:0\np0:0704\ngarbage\nmo:12:1\nmo:0012:7\nmo:9999:6\n"
+    assert.deepStrictEqual(parseMotionLines(text), [
+        { diff: 12, face: 1 },
+        { diff: 345, face: 0 },
+        { diff: 9999, face: 6 },
+    ])
+})
+
+test("parseMotionLines: 文字欠け・空入力は棄却", function () {
+    assert.deepStrictEqual(parseMotionLines(""), [])
+    assert.deepStrictEqual(parseMotionLines("mo:012:1\nmo:0012:\nmo:00012:1\n"), [])
+})
+
+test("poseRate: classify≠0 の割合", function () {
+    const samples = [
+        { diff: 10, face: 1 },
+        { diff: 20, face: 0 },
+        { diff: 30, face: 6 },
+        { diff: 40, face: 0 },
+    ]
+    assert.strictEqual(poseRate(samples), 0.5)
+})
+
+test("poseRate: 空入力は0", function () {
+    assert.strictEqual(poseRate([]), 0)
+})
+
+test("decideMotion: マージン十分なら静止閾値を返す", function () {
+    const desk = computeStats([2, 4, 6, 8, 10])
+    const hand = [computeStats([60, 80, 100]), computeStats([50, 90, 120])]
+    const d = decideMotion(desk, hand)
+    assert.strictEqual(d.deskCeiling, 10)
+    assert.strictEqual(d.handFloor, 50)
+    assert.strictEqual(d.margin, 40)
+    assert.strictEqual(d.ok, true)
+    assert.strictEqual(d.stillThreshold, 30)
+})
+
+test("decideMotion: 手持ちの下限が机置きに迫るとok=false", function () {
+    const desk = computeStats([5, 10, 15])
+    const hand = [computeStats([20, 30, 40])]
+    const d = decideMotion(desk, hand)
+    assert.strictEqual(d.margin, 5)
+    assert.strictEqual(d.ok, false)
+})
+
+test("decideMotion: handグループ欠落はthrow", function () {
+    assert.throws(function () { decideMotion(computeStats([1]), []) })
 })
 
 test("percentile: nearest-rank", function () {
