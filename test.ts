@@ -205,27 +205,29 @@ function runTests(): void {
         cubeTouch._testFeedTouchSample(570)
         assert(cubeTouch._localPinStuck() === true, "setup: stuck")
         assertEq(cubeTouch._testGetRef(), 570, "ref snapped to stuck level")
+        for (let i = 0; i < 19; i++) {
+            cubeTouch._testFeedTouchSample(722)
+        }
+        assert(cubeTouch._localPinStuck() === true, "19 samples: not yet (release needs 20)")
         cubeTouch._testFeedTouchSample(722)
-        cubeTouch._testFeedTouchSample(722)
-        cubeTouch._testFeedTouchSample(722)
-        assert(cubeTouch._localPinStuck() === true, "3 samples: not yet (release needs 4)")
-        cubeTouch._testFeedTouchSample(722)
-        assert(cubeTouch._localPinStuck() === false, "quick removal: up edge from snapped ref")
+        assert(cubeTouch._localPinStuck() === false, "removal: up edge from snapped ref")
         assertEq(cubeTouch._testGetRef(), 722, "ref snapped back on release")
     })
 
-    test("touch: brief contact loss while stuck does not release", function () {
+    test("touch: baseline bounce while stuck does not release", function () {
         cubeTouch._testResetTouch()
         seedTouch(722)
         cubeTouch._testFeedTouchSample(570)
         cubeTouch._testFeedTouchSample(570)
         assert(cubeTouch._localPinStuck() === true, "setup: stuck")
-        cubeTouch._testFeedTouchSample(720)
-        cubeTouch._testFeedTouchSample(720)
-        cubeTouch._testFeedTouchSample(721)
+        // 刺したままでも信号は最長650ms程度 (50ms周期で13サンプル) ベースラインへ
+        // 戻り続けることがある (2026-07-11実測)。この揺り戻しで release しない
+        for (let i = 0; i < 19; i++) {
+            cubeTouch._testFeedTouchSample(720)
+        }
         cubeTouch._testFeedTouchSample(575)
         cubeTouch._testFeedTouchSample(574)
-        assert(cubeTouch._localPinStuck() === true, "3-sample bounce back filtered")
+        assert(cubeTouch._localPinStuck() === true, "19-sample bounce back filtered")
     })
 
     test("touch: slow decay while stuck does not release", function () {
@@ -240,10 +242,9 @@ function runTests(): void {
             cubeTouch._testFeedTouchSample(level)
         }
         assert(cubeTouch._localPinStuck() === true, "decay toward baseline is not an up edge")
-        cubeTouch._testFeedTouchSample(722)
-        cubeTouch._testFeedTouchSample(722)
-        cubeTouch._testFeedTouchSample(722)
-        cubeTouch._testFeedTouchSample(722)
+        for (let i = 0; i < 20; i++) {
+            cubeTouch._testFeedTouchSample(722)
+        }
         assert(cubeTouch._localPinStuck() === false, "real removal still releases after decay")
     })
 

@@ -10,7 +10,10 @@ namespace cubeTouch {
     const TOUCH_STUCK_EDGE = 50
     const TOUCH_RELEASE_EDGE = 40
     const TOUCH_STUCK_CONFIRM = 2
-    const TOUCH_RELEASE_CONFIRM = 4
+    // 刺したままでも信号が最長650ms程度ベースラインへ戻り続けることがあり (2026-07-11実測、
+    // docs/measurements/2026-07-11-touch.json)、確認4回 (200ms) では誤releaseする。
+    // 実測波形の再生で14回から誤release0になるため、余裕を見て20回 (1000ms) とする
+    const TOUCH_RELEASE_CONFIRM = 20
     const TOUCH_REF_DIV = 32
     export const TOUCH_WARMUP_SAMPLES = 9
 
