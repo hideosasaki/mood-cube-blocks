@@ -191,7 +191,7 @@ namespace cubeTouch {
         // 1=micro:bit裏面, 6=表面, 2=Bボタン側, 5=Aボタン側, 3=ロゴ側, 4=エッジコネクタ側。
         // 読み値は重力方向 (下向き) を指すので、上面は符号の逆側
         if (maxAxis === 0) return x > 0 ? CubeFace.Face5 : CubeFace.Face2
-        if (maxAxis === 1) return y > 0 ? CubeFace.Face4 : CubeFace.Face3
+        if (maxAxis === 1) return y > 0 ? CubeFace.Face3 : CubeFace.Face4
         return z > 0 ? CubeFace.Face1 : CubeFace.Face6
     }
 
