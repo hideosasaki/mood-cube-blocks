@@ -6,16 +6,12 @@ namespace cubeTouch {
     const ACCEL_NORM_MAX = 1600
     const AXIS_DOMINANCE_MIN = 200
 
-    // ピン刺し検知は適応参照値+エッジ検出。根拠データは docs/measurements/2026-07-06-*.json
+    // ピン刺し検知は適応参照値からの下振れ1サンプルで即発火する。状態 (刺さっている/抜けた) は
+    // 持たない。根拠データは docs/measurements/2026-07-12-poke.json ほか
     const TOUCH_STUCK_EDGE = 50
-    const TOUCH_RELEASE_EDGE = 40
-    // 接触が浅いと下振れが間欠的にしか閾値を越えない (2026-07-12実測、face5)。
-    // 刺さり確認は連続ではなく、10サンプル (500ms) の窓内に2回目の下振れがあれば成立
-    const TOUCH_STUCK_WINDOW = 10
-    // 刺したままでも信号が最長650ms程度ベースラインへ戻り続けることがあり (2026-07-11実測、
-    // docs/measurements/2026-07-11-touch.json)、確認4回 (200ms) では誤releaseする。
-    // 実測波形の再生で14回から誤release0になるため、余裕を見て20回 (1000ms) とする
-    const TOUCH_RELEASE_CONFIRM = 20
+    // 発火後はクリーンなサンプルが連続するまで再発火を封じる (再アーム)。刺している間の
+    // 商用ノイズの揺れでは連続が成立せず、抜いて次を刺す動作では自然に成立する (2026-07-12実測)
+    export const TOUCH_REARM_SAMPLES = 6
     const TOUCH_REF_DIV = 32
     export const TOUCH_WARMUP_SAMPLES = 9
 
@@ -23,10 +19,9 @@ namespace cubeTouch {
     let _candidate: CubeFace = CubeFace.Face1
     let _candidateSince: number = 0
     let _initialized = false
-    let _pinStuck: boolean = false
     let _ref: number = -1
-    let _edgeCount: number = 0
-    let _edgeWindowLeft: number = 0
+    let _cleanRun: number = 0
+    let _stabCount: number = 0
     let _warmupBuf: number[] = []
 
     //% blockId=cubeTouch_surface block="surface"
@@ -34,13 +29,6 @@ namespace cubeTouch {
         if (cubeInternal.role === CubeRole.Touch) return _surface
         if (cubeInternal.role === CubeRole.Grip) return cubePair.requestSurface()
         return CubeFace.Face1
-    }
-
-    //% blockId=cubeTouch_pinStuck block="pin stuck"
-    export function pinStuck(): boolean {
-        if (cubeInternal.role === CubeRole.Touch) return _pinStuck
-        if (cubeInternal.role === CubeRole.Grip) return cubePair.requestPinStuck()
-        return false
     }
 
     //% blockId=cubeTouch_onSurfaceChange block="on surface changed"
@@ -55,14 +43,6 @@ namespace cubeTouch {
     //% draggableParameters="reporter"
     export function onPinStuck(handler: (face: number) => void): void {
         control.onEvent(cubeInternal.EVT_SRC_PIN_STUCK, 0, function () {
-            handler(control.eventValue())
-        })
-    }
-
-    //% blockId=cubeTouch_onPinReleased block="on pin released"
-    //% draggableParameters="reporter"
-    export function onPinReleased(handler: (face: number) => void): void {
-        control.onEvent(cubeInternal.EVT_SRC_PIN_RELEASED, 0, function () {
             handler(control.eventValue())
         })
     }
@@ -115,39 +95,19 @@ namespace cubeTouch {
         }
         const dev = raw - _ref
 
-        // エッジ候補の間は参照値を更新しない。接触瞬断のバウンドで参照値が信号に引き寄せられ、
-        // 本物のエッジが検出できなくなるのを防ぐ
-        if (!_pinStuck) {
-            if (dev < -TOUCH_STUCK_EDGE) {
-                if (_edgeWindowLeft > 0) {
-                    _edgeWindowLeft = 0
-                    _pinStuck = true
-                    _ref = raw
-                    cubePower._markActive(input.runningTime())
-                    control.raiseEvent(cubeInternal.EVT_SRC_PIN_STUCK, _surface)
-                    cubePair._broadcastPin(_surface, true)
-                } else {
-                    _edgeWindowLeft = TOUCH_STUCK_WINDOW
-                }
-                return
+        // 下振れの間は参照値を更新しない。信号に引き寄せられて感度が落ちるのを防ぐ
+        if (dev < -TOUCH_STUCK_EDGE) {
+            if (_cleanRun >= TOUCH_REARM_SAMPLES) {
+                _stabCount++
+                cubePower._markActive(input.runningTime())
+                control.raiseEvent(cubeInternal.EVT_SRC_PIN_STUCK, _surface)
+                cubePair._broadcastPin(_surface)
             }
-            if (_edgeWindowLeft > 0) _edgeWindowLeft--
-        } else {
-            if (dev > TOUCH_RELEASE_EDGE) {
-                _edgeCount++
-                if (_edgeCount >= TOUCH_RELEASE_CONFIRM) {
-                    _edgeCount = 0
-                    _pinStuck = false
-                    _ref = raw
-                    cubePower._markActive(input.runningTime())
-                    control.raiseEvent(cubeInternal.EVT_SRC_PIN_RELEASED, _surface)
-                    cubePair._broadcastPin(_surface, false)
-                }
-                return
-            }
+            _cleanRun = 0
+            return
         }
 
-        _edgeCount = 0
+        _cleanRun++
         _ref += (raw - _ref) / TOUCH_REF_DIV
     }
 
@@ -197,10 +157,13 @@ namespace cubeTouch {
 
     export function _testResetTouch(): void {
         _ref = -1
-        _edgeCount = 0
-        _edgeWindowLeft = 0
-        _pinStuck = false
+        _cleanRun = 0
+        _stabCount = 0
         _warmupBuf = []
+    }
+
+    export function _testStabCount(): number {
+        return _stabCount
     }
 
     export function _testGetRef(): number {
@@ -215,10 +178,6 @@ namespace cubeTouch {
         return _surface
     }
 
-    export function _localPinStuck(): boolean {
-        return _pinStuck
-    }
-
     export function _raiseRemoteSurface(face: number): void {
         if (face < 1 || face > 6) return
         _surface = face
@@ -226,12 +185,10 @@ namespace cubeTouch {
         control.raiseEvent(cubeInternal.EVT_SRC_SURFACE, face)
     }
 
-    export function _raiseRemotePin(face: number, stuck: boolean): void {
+    export function _raiseRemotePin(face: number): void {
         if (face < 1 || face > 6) return
-        _pinStuck = stuck
         cubePower._markActive(input.runningTime())
-        const src = stuck ? cubeInternal.EVT_SRC_PIN_STUCK : cubeInternal.EVT_SRC_PIN_RELEASED
-        control.raiseEvent(src, face)
+        control.raiseEvent(cubeInternal.EVT_SRC_PIN_STUCK, face)
     }
 
     export function _raiseRemoteMotion(pickup: boolean): void {

@@ -27,6 +27,12 @@ function seedTouch(v: number): void {
     }
 }
 
+function armTouch(): void {
+    for (let i = 0; i < cubeTouch.TOUCH_REARM_SAMPLES; i++) {
+        cubeTouch._testFeedTouchSample(722)
+    }
+}
+
 function runTests(): void {
     test("rawToStrength: at or below baseline returns 0", function () {
         assertEq(cubeGrip._rawToStrength(0), 0, "raw=0")
@@ -154,7 +160,7 @@ function runTests(): void {
         }
         cubeTouch._testFeedTouchSample(722)
         assertEq(cubeTouch._testGetRef(), 722, "seeded at last warmup sample")
-        assert(cubeTouch._localPinStuck() === false, "seeding does not stick")
+        assertEq(cubeTouch._testStabCount(), 0, "seeding does not fire")
     })
 
     test("touch warmup: boot transient dips neither stick nor skew the seed", function () {
@@ -162,12 +168,12 @@ function runTests(): void {
         const boot = [900, 570, 570, 722, 722, 722, 722, 722, 722]
         for (let i = 0; i < boot.length; i++) {
             cubeTouch._testFeedTouchSample(boot[i])
-            assert(cubeTouch._localPinStuck() === false, "no stuck during warmup (sample " + (i + 1) + ")")
+            assertEq(cubeTouch._testStabCount(), 0, "no fire during warmup (sample " + (i + 1) + ")")
         }
         assertEq(cubeTouch._testGetRef(), 722, "median absorbs transient outliers")
         cubeTouch._testFeedTouchSample(700)
         cubeTouch._testFeedTouchSample(700)
-        assert(cubeTouch._localPinStuck() === false, "stable after warmup")
+        assertEq(cubeTouch._testStabCount(), 0, "stable after warmup")
     })
 
     test("touch warmup: wake check is false before seeding", function () {
@@ -177,94 +183,78 @@ function runTests(): void {
         assert(cubeTouch._isTouchSample(0) === false, "no ref during warmup")
     })
 
-    test("touch stuck: two down-edges within the window stick", function () {
+    test("touch stab: armed single dip fires immediately", function () {
         cubeTouch._testResetTouch()
         seedTouch(722)
+        armTouch()
         cubeTouch._testFeedTouchSample(570)
-        assert(cubeTouch._localPinStuck() === false, "1st edge sample: not yet")
-        // 接触が浅いと商用ノイズの下振れが間欠的にしか閾値を越えない (2026-07-12実測)。
-        // 連続でなくても窓内 (10サンプル=500ms) に2回下振れがあれば刺さり確定
-        for (let i = 0; i < 8; i++) {
-            cubeTouch._testFeedTouchSample(722)
-        }
-        assert(cubeTouch._localPinStuck() === false, "baseline bounce keeps pending")
-        cubeTouch._testFeedTouchSample(570)
-        assert(cubeTouch._localPinStuck() === true, "2nd edge within window: stuck")
-    })
-
-    test("touch stuck: window expiry forgets the first edge", function () {
-        cubeTouch._testResetTouch()
-        seedTouch(722)
-        cubeTouch._testFeedTouchSample(570)
+        assertEq(cubeTouch._testStabCount(), 1, "first dip sample fires")
         for (let i = 0; i < 10; i++) {
+            cubeTouch._testFeedTouchSample(570)
+        }
+        assertEq(cubeTouch._testStabCount(), 1, "sustained dip does not refire")
+    })
+
+    test("touch stab: not armed right after seeding", function () {
+        cubeTouch._testResetTouch()
+        seedTouch(722)
+        cubeTouch._testFeedTouchSample(570)
+        assertEq(cubeTouch._testStabCount(), 0, "needs a clean run before first fire")
+    })
+
+    test("touch stab: rearm needs full clean run", function () {
+        cubeTouch._testResetTouch()
+        seedTouch(722)
+        armTouch()
+        cubeTouch._testFeedTouchSample(570)
+        assertEq(cubeTouch._testStabCount(), 1, "setup: fired once")
+        for (let i = 0; i < 5; i++) {
             cubeTouch._testFeedTouchSample(722)
         }
         cubeTouch._testFeedTouchSample(570)
-        assert(cubeTouch._localPinStuck() === false, "window expired: counts as 1st edge again")
+        assertEq(cubeTouch._testStabCount(), 1, "5 clean samples: not rearmed yet")
+        armTouch()
         cubeTouch._testFeedTouchSample(570)
-        assert(cubeTouch._localPinStuck() === true, "consecutive pair still sticks")
+        assertEq(cubeTouch._testStabCount(), 2, "full clean run rearms")
     })
 
-    test("touch stuck: shallow dip below edge threshold does not stick", function () {
+    test("touch stab: mid-dip wobble does not rearm", function () {
         cubeTouch._testResetTouch()
         seedTouch(722)
+        armTouch()
+        cubeTouch._testFeedTouchSample(570)
+        // 刺したまま商用ノイズで揺れる波形 (短い戻り+下振れの繰り返し) では再発火しない
+        for (let c = 0; c < 5; c++) {
+            for (let i = 0; i < 3; i++) {
+                cubeTouch._testFeedTouchSample(720)
+            }
+            cubeTouch._testFeedTouchSample(570)
+        }
+        assertEq(cubeTouch._testStabCount(), 1, "wobble keeps it disarmed")
+    })
+
+    test("touch stab: shallow dip neither fires nor breaks arming", function () {
+        cubeTouch._testResetTouch()
+        seedTouch(722)
+        armTouch()
         cubeTouch._testFeedTouchSample(690)
         cubeTouch._testFeedTouchSample(690)
-        cubeTouch._testFeedTouchSample(690)
-        assert(cubeTouch._localPinStuck() === false, "-32 is below the edge threshold")
+        assertEq(cubeTouch._testStabCount(), 0, "-32 is below the edge threshold")
+        cubeTouch._testFeedTouchSample(570)
+        assertEq(cubeTouch._testStabCount(), 1, "still armed after shallow wobble")
     })
 
-    test("touch: ref snaps to level on stuck edge, quick removal releases", function () {
+    test("touch stab: ref frozen while dipped", function () {
         cubeTouch._testResetTouch()
         seedTouch(722)
-        cubeTouch._testFeedTouchSample(570)
-        cubeTouch._testFeedTouchSample(570)
-        assert(cubeTouch._localPinStuck() === true, "setup: stuck")
-        assertEq(cubeTouch._testGetRef(), 570, "ref snapped to stuck level")
-        for (let i = 0; i < 19; i++) {
-            cubeTouch._testFeedTouchSample(722)
-        }
-        assert(cubeTouch._localPinStuck() === true, "19 samples: not yet (release needs 20)")
-        cubeTouch._testFeedTouchSample(722)
-        assert(cubeTouch._localPinStuck() === false, "removal: up edge from snapped ref")
-        assertEq(cubeTouch._testGetRef(), 722, "ref snapped back on release")
-    })
-
-    test("touch: baseline bounce while stuck does not release", function () {
-        cubeTouch._testResetTouch()
-        seedTouch(722)
-        cubeTouch._testFeedTouchSample(570)
-        cubeTouch._testFeedTouchSample(570)
-        assert(cubeTouch._localPinStuck() === true, "setup: stuck")
-        // 刺したままでも信号は最長650ms程度 (50ms周期で13サンプル) ベースラインへ
-        // 戻り続けることがある (2026-07-11実測)。この揺り戻しで release しない
-        for (let i = 0; i < 19; i++) {
-            cubeTouch._testFeedTouchSample(720)
-        }
-        cubeTouch._testFeedTouchSample(575)
-        cubeTouch._testFeedTouchSample(574)
-        assert(cubeTouch._localPinStuck() === true, "19-sample bounce back filtered")
-    })
-
-    test("touch: slow decay while stuck does not release", function () {
-        cubeTouch._testResetTouch()
-        seedTouch(722)
-        cubeTouch._testFeedTouchSample(570)
-        cubeTouch._testFeedTouchSample(570)
-        assert(cubeTouch._localPinStuck() === true, "setup: stuck")
-        let level = 570
-        for (let i = 0; i < 1000; i++) {
-            if (level < 666) level = level + 1 - (i % 10 === 0 ? 1 : 0)
-            cubeTouch._testFeedTouchSample(level)
-        }
-        assert(cubeTouch._localPinStuck() === true, "decay toward baseline is not an up edge")
+        armTouch()
         for (let i = 0; i < 20; i++) {
-            cubeTouch._testFeedTouchSample(722)
+            cubeTouch._testFeedTouchSample(570)
         }
-        assert(cubeTouch._localPinStuck() === false, "real removal still releases after decay")
+        assertEq(cubeTouch._testGetRef(), 722, "ref not dragged toward the dip")
     })
 
-    test("touch: slow drift while idle does not stick", function () {
+    test("touch: slow drift while idle does not fire", function () {
         cubeTouch._testResetTouch()
         seedTouch(722)
         let level = 722
@@ -272,7 +262,7 @@ function runTests(): void {
             if (level > 622 && i % 2 === 0) level--
             cubeTouch._testFeedTouchSample(level)
         }
-        assert(cubeTouch._localPinStuck() === false, "ref follows slow downward drift")
+        assertEq(cubeTouch._testStabCount(), 0, "ref follows slow downward drift")
     })
 
     test("touch wake check: deep sample relative to ref", function () {
@@ -314,18 +304,6 @@ function runTests(): void {
         for (let i = 0; i < xs.length; i++) {
             assertEq(cubeTouch._classifyAccel(xs[i], ys[i], zs[i]), faces[i], "case " + i)
         }
-    })
-
-    test("encode/decode pin: stuck=true", function () {
-        const v = cubePair._encodePin(3, true)
-        assertEq(cubePair._decodePinFace(v), 3, "face round trip")
-        assert(cubePair._decodePinStuck(v) === true, "stuck=true round trip")
-    })
-
-    test("encode/decode pin: stuck=false", function () {
-        const v = cubePair._encodePin(6, false)
-        assertEq(cubePair._decodePinFace(v), 6, "face round trip")
-        assert(cubePair._decodePinStuck(v) === false, "stuck=false round trip")
     })
 
     test("encode/decode grip event: offset=0 strength=9", function () {

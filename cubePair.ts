@@ -42,7 +42,7 @@ namespace cubePair {
         if (name === cubeInternal.MSG_TOUCH_SURFACE && cubeInternal.role === CubeRole.Grip) {
             cubeTouch._raiseRemoteSurface(value)
         } else if (name === cubeInternal.MSG_TOUCH_PIN && cubeInternal.role === CubeRole.Grip) {
-            cubeTouch._raiseRemotePin(_decodePinFace(value), _decodePinStuck(value))
+            cubeTouch._raiseRemotePin(value)
         } else if (name === cubeInternal.MSG_GRIP_EVENT && cubeInternal.role === CubeRole.Touch) {
             cubeGrip._raiseRemoteGripEvent(cubeInternal.EVT_SRC_GRIP_START + _decodeGripOffset(value), _decodeGripStrength(value))
         } else if (name === cubeInternal.MSG_TOUCH_MOTION && cubeInternal.role === CubeRole.Grip) {
@@ -53,25 +53,11 @@ namespace cubePair {
             radio.sendValue(cubeInternal.MSG_RESP_SURFACE, _encodeResp(value, cubeTouch._localSurface()))
         } else if (name === cubeInternal.MSG_QUERY_GRIP && cubeInternal.role === CubeRole.Grip) {
             radio.sendValue(cubeInternal.MSG_RESP_GRIP, _encodeResp(value, cubeGrip._localStrength()))
-        } else if (name === cubeInternal.MSG_QUERY_PIN && cubeInternal.role === CubeRole.Touch) {
-            radio.sendValue(cubeInternal.MSG_RESP_PIN, _encodeResp(value, cubeTouch._localPinStuck() ? 1 : 0))
-        } else if (name === cubeInternal.MSG_RESP_SURFACE || name === cubeInternal.MSG_RESP_GRIP || name === cubeInternal.MSG_RESP_PIN) {
+        } else if (name === cubeInternal.MSG_RESP_SURFACE || name === cubeInternal.MSG_RESP_GRIP) {
             if (_decodeRespId(value) === _pendingReq) {
                 _pendingResp = _decodeRespValue(value)
             }
         }
-    }
-
-    export function _encodePin(face: number, stuck: boolean): number {
-        return face * 10 + (stuck ? 1 : 0)
-    }
-
-    export function _decodePinFace(value: number): number {
-        return Math.idiv(value, 10)
-    }
-
-    export function _decodePinStuck(value: number): boolean {
-        return (value % 10) === 1
     }
 
     export function _encodeGripEvent(offset: number, strength: number): number {
@@ -127,10 +113,6 @@ namespace cubePair {
         return request(CubeRole.Touch, cubeInternal.MSG_QUERY_GRIP)
     }
 
-    export function requestPinStuck(): boolean {
-        return request(CubeRole.Grip, cubeInternal.MSG_QUERY_PIN) === 1
-    }
-
     const BEACON_DURATION_MS = 1200
     const BEACON_INTERVAL_MS = 50
 
@@ -152,9 +134,9 @@ namespace cubePair {
         broadcastWithBeacon(cubeInternal.MSG_TOUCH_SURFACE, face)
     }
 
-    export function _broadcastPin(face: number, stuck: boolean): void {
+    export function _broadcastPin(face: number): void {
         if (cubeInternal.role !== CubeRole.Touch) return
-        broadcastWithBeacon(cubeInternal.MSG_TOUCH_PIN, _encodePin(face, stuck))
+        broadcastWithBeacon(cubeInternal.MSG_TOUCH_PIN, face)
     }
 
     export function _broadcastGripEvent(src: number, strength: number): void {

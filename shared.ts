@@ -29,7 +29,6 @@ namespace cubeInternal {
 
     export const EVT_SRC_SURFACE = 0xCB01
     export const EVT_SRC_PIN_STUCK = 0xCB02
-    export const EVT_SRC_PIN_RELEASED = 0xCB03
     export const EVT_SRC_GRIP_START = 0xCB04
     export const EVT_SRC_GRIP_RELEASE = 0xCB05
     export const EVT_SRC_GRIP_MAX_REACHED = 0xCB06
@@ -51,8 +50,6 @@ namespace cubeInternal {
     export const MSG_QUERY_GRIP = "qg"
     export const MSG_RESP_SURFACE = "rs"
     export const MSG_RESP_GRIP = "rg"
-    export const MSG_QUERY_PIN = "qp"
-    export const MSG_RESP_PIN = "rp"
 
     export function _medianInPlace(samples: number[]): number {
         for (let i = 1; i < samples.length; i++) {
