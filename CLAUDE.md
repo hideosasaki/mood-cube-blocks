@@ -10,6 +10,13 @@ micro:bit v2 用 MakeCode 拡張機能。フィジェット作品「mood cube」
 
 ローカル開発環境の構築、blocksエディタとの同期手順、関連リポジトリ (grip / touch / blocks-test) の触り方は [docs/development.md](docs/development.md) にまとめる。`main.ts`を直接編集してpushするとblocks表示が壊れる等の落とし穴があるので、ts編集前に必ず参照する。
 
+## テスト
+
+- テストは [test.ts](test.ts) に書き、`make test` でローカル実行する (node + [tests/local/stubs.ts](tests/local/stubs.ts) のスタブ)。コード変更はテストファーストで進める
+- commit前は `make check` (pxt型チェック + ローカルテスト + 計測ツールのテスト) を通す
+- テストで新しいmicro:bit APIを使うときはstubs.tsに追加が必要
+- test.tsの末尾は実機計測用の生ログ送信部を兼ねる (measure-p0 / measure-motionスキルが使う)。テスト追加時に壊さない
+
 ## 開発の前提
 
 - ターゲットは micro:bit v2 のみ

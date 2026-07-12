@@ -13,9 +13,9 @@ description: mood cube のP0アナログ値 (触感キューブのタッチ、�
 
 計測に使えるのは拡張リポジトリのテストビルド (計測ファーム) だけ。blocks-test等のアプリ層ファームは、スリープ (3分無操作で突入しシリアルが止まる)・ラジオ・音・NeoPixelが動いて計測を汚すので使わない。MakeCodeエディタでデバイスに書き込むとアプリ層ファームに置き換わるため、計測セッションの開始時は必ず画面を確認する。Chessboard柄でなければ計測ファームを焼き直してから始める。シリアルの読み手は1本だけ (このツールのリーダーとMakeCodeコンソールは同時に使えない。両方開くと双方文字化けする)。
 
-- デバイス側ファームウェアは拡張リポジトリのテストビルド。`pxt build` で `built/binary.hex` を作り、MICROBITボリュームにコピーして焼く (`cp` で拡張属性エラーが出たら `dd if=built/binary.hex of=/Volumes/MICROBIT/binary.hex`)
+- デバイス側ファームウェアは拡張リポジトリのテストビルド。`pxt build` してflash-microbitスキルの手順でpyOCD書き込みする (MICROBITドライブへのコピーはこの個体では失敗する)。書き込み前にMakeCodeエディタの接続解除も同スキルどおり確認する
 - 起動するとtest.tsの単体テストが走り、パスすると生ログが自動で始まる (Chessboard柄=送信中)。Bボタンで停止/再開を切り替えられる
-- MakeCodeエディタのシリアルコンソールを閉じておく。シリアルポートは1プロセスしか掴めない
+- MakeCodeエディタのシリアルコンソールとWebUSB接続を閉じておく。シリアルポートは1プロセスしか掴めない。WebUSB接続が残っているとDAP経由でシリアルを吸われて激しく文字化けする (2026-07-13に9割欠損を実測)
 - シリアル読み取りは `tools/measure/serialread.py` (termios直接制御) で行う。`stty` + `cat` はDAPLink CDCからデータが取れないので使わない
 
 ## 手順
@@ -51,7 +51,7 @@ USB接続はGNDが大地に落ちるためタッチの電気的条件が本番 (
 
 準備と計測の手順。
 
-1. `cd tools/measure/flashlog && pxt install && pxt build` で `built/binary.hex` を作り、いつもの方法で焼く
+1. `cd tools/measure/flashlog && pxt install && pxt build` で作った `built/mbcodal-binary.hex` を、flash-microbitスキルの手順でpyOCD書き込みする
 2. USBを抜き、電池で起動する (`-` 表示 = 待機中。起動時にログは消えない)
 3. A+B同時押しでログを全消去 (`C` 表示)。セッション開始前に必ず行う
 4. Aを押すとシナリオ1の記録開始。LEDの数字が現在のシナリオ番号。以後Aを押すたびに次の番号へ進む
