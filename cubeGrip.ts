@@ -73,6 +73,10 @@ namespace cubeGrip {
         })
     }
 
+    // baseline較正はスリープ突入直前に行う (cubePowerから呼ばれる)。起動時は手に持っている
+    // 可能性が高いのに対し、スリープ直前は無操作が続いた後なので無握りがほぼ確実。ドリフトで
+    // 幽霊値 (無握りなのに強さ>=1) が出た個体も、放置されれば必ずスリープに到達して校正される。
+    // 最初のスリープまではデフォルト値で動く
     export function _calibrate(): void {
         if (cubeInternal.role !== CubeRole.Grip) return
         const samples: number[] = []
@@ -86,6 +90,7 @@ namespace cubeGrip {
     export function _applyCalibration(samples: number[]): void {
         const median = cubeInternal._medianInPlace(samples)
         const spread = samples[samples.length - 1] - samples[0]
+        // ばらつきが大きい、または値が高すぎる (握られている疑い) 場合は現在のbaselineを維持する
         if (spread > 100 || median > 200) return
         _rawZeroMax = median + BASELINE_MARGIN
     }

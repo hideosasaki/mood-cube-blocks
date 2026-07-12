@@ -113,6 +113,8 @@ namespace cubePair {
         return request(CubeRole.Touch, cubeInternal.MSG_QUERY_GRIP)
     }
 
+    // 相手はスリープ中1秒周期wakeのlistenでしか聞いていないので、1周期を超える時間
+    // 連投することでクロック同期なしに必ず届く
     const BEACON_DURATION_MS = 1200
     const BEACON_INTERVAL_MS = 50
 

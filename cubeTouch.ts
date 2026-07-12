@@ -12,6 +12,8 @@ namespace cubeTouch {
     // 発火後はクリーンなサンプルが連続するまで再発火を封じる (再アーム)。刺している間の
     // 商用ノイズの揺れでは連続が成立せず、抜いて次を刺す動作では自然に成立する (2026-07-12実測)
     export const TOUCH_REARM_SAMPLES = 6
+    // 参照値は指数移動平均で追従し、個体差 (漏れ電流による動作点の違い)・基板差・温度変化を
+    // 自動で吸収する。起動時やスリープ前の較正は持たない
     const TOUCH_REF_DIV = 32
     export const TOUCH_WARMUP_SAMPLES = 9
 

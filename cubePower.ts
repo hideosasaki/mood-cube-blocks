@@ -1,3 +1,5 @@
+// 電力設計: スリープ中は1秒周期のwakeで動き・P0・ペアビーコンを確認する。active時間は
+// 1秒あたり100ms程度で平均消費電流は約1.5mA、単3×3でidle約68日を見込む
 namespace cubePower {
     const MOTION_THRESHOLD = 200
     const PERIODIC_WAKE_MS = 1000
