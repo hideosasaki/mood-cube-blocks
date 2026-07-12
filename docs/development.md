@@ -70,9 +70,9 @@ mood-cube-blocksは公開APIを提供する側、grip/touch/blocks-testは利用
 
 ### アプリ層 (grip / touch / blocks-test) を直すとき
 
-アプリ層は子供がMakeCodeのwebエディタ ([https://makecode.microbit.org/](https://makecode.microbit.org/)) でblocksを並べて作る。ローカルからの修正はClaude Codeに頼む。手順は [makecode-app-edit skill](../.claude/skills/makecode-app-edit/SKILL.md) が持っていて、`main.ts`の編集と`main.blocks`の同期 (sync-blocks.sh) までClaude Codeがやる。このプロセスが必要な理由はsync-blocks.shのコメントに書いてある。
+アプリ層は子供がMakeCodeのwebエディタ ([https://makecode.microbit.org/](https://makecode.microbit.org/)) でblocksを並べて作る。コードの編集はwebエディタでのみ行い、ローカルから `main.ts` / `main.blocks` を変更しない。ローカルで `main.ts` を編集してdecompileで `main.blocks` を再同期する運用は、blocksのレイアウトが初期化される事故が起きたため廃止した (2026-07-12)。
 
-人間がやるのはpush後の確認だけ。webエディタでプロジェクトを開き、画面下部のGitHubボタンからpullして、blocks表示を目視確認する。
+ローカルからやってよいのは、`pxt.json` の拡張依存ハッシュの手動更新だけ。手順と制約は [makecode-app-edit skill](../.claude/skills/makecode-app-edit/SKILL.md) に書いてある。ハッシュ更新のpush後は、webエディタでプロジェクトを開き、画面下部のGitHubボタンからpullして、blocks表示を目視確認する。
 
 - mood-cube-grip: [https://makecode.microbit.org/#github:hideosasaki/mood-cube-grip](https://makecode.microbit.org/#github:hideosasaki/mood-cube-grip)
 - mood-cube-touch: [https://makecode.microbit.org/#github:hideosasaki/mood-cube-touch](https://makecode.microbit.org/#github:hideosasaki/mood-cube-touch)

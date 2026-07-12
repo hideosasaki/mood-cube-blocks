@@ -1,39 +1,32 @@
 ---
 name: makecode-app-edit
-description: アプリ層MakeCodeプロジェクト (mood-cube-grip / mood-cube-touch / mood-cube-blocks-test) のコードをローカルから編集するときに必ず使う。main.tsだけ編集してpushするとwebエディタに変更が現れず、エディタ側の保存で消えるため、main.blocksの同期までを一体の手順として行う。
+description: アプリ層MakeCodeプロジェクト (mood-cube-grip / mood-cube-touch / mood-cube-blocks-test) に関わる作業を頼まれたら必ず読む。アプリ層のコード編集はwebエディタ専用で、ローカルからmain.ts/main.blocksを変更してはいけない。ローカルで行ってよいのは拡張依存ハッシュの更新と実機テストビルドだけ。
 ---
 
-# アプリ層MakeCodeプロジェクトの編集
+# アプリ層MakeCodeプロジェクトの取り扱い
 
-grip / touch / blocks-test の main.ts を編集してほしいと言われたら、この手順に従う。
+## 原則: コード編集はwebエディタでのみ行う
 
-## 前提
+アプリ層 (grip / touch / blocks-test) の main.ts と main.blocks は、MakeCodeのwebエディタだけが正しく編集できる。ローカルでの main.ts 編集や main.blocks の再生成は禁止。
 
-- webエディタの表示は main.blocks が起点。main.ts だけの push は「変更が現れない → エディタ保存で消える」事故になる
-- grip / touch は子供の作品。頼まれた最小限の修正だけを入れ、リファクタリングや整理はしない
+- 過去に「main.tsを編集してdecompileでmain.blocksを再同期する」スクリプト運用を試したが、blocksのレイアウトが初期化される事故が起きたため廃止した (2026-07-12)
+- コード修正が必要なときは、webエディタでの修正手順 (どのブロックをどう変えるか) をユーザーに伝える。編集後、webエディタのGitHub連携がcommit/pushする
 
-## 手順
+## ローカルで行ってよい作業
 
-1. main.ts を編集する
-   - blocks に decompile できる Static TS subset のみ。既存コード (decompile済みスタイル) の書き方に合わせる
-   - トップレベルのイベント登録・`function` 宣言・`let` 変数はOK。クラス・アロー関数の変数代入・型注釈は使わない
-2. プロジェクトのルートで同期スクリプトを実行する
+### 拡張依存ハッシュの更新
 
-   ```sh
-   eval "$(mise activate zsh)" && ../mood-cube-blocks/.claude/skills/makecode-app-edit/sync-blocks.sh
-   ```
+拡張 (mood-cube-blocks) の新しいコミットをアプリ層に取り込むときは、pxt.json の依存ハッシュを手で書き換える。
 
-   main.blocks の再生成 → ブロック座標の復元をまとめて行う (コンパイルエラーの検知も兼ねる)。エラー時の対処はスクリプトが出すメッセージに従う
-3. 出力を確認する
-   - `restored: N block(s)`: 既存ブロックの座標が復元された数
-   - `new (auto-placed below): ...`: 追加したハンドラ。既存配置の下に置かれる
-   - `removed since old layout: ...`: 削除したハンドラ。意図した削除か確認する
-4. main.ts と main.blocks を必ず一緒に commit する。片方だけの commit は禁止
-5. push したら、ユーザーに次を依頼する
-   - webエディタでプロジェクトを開き、画面下部の GitHub ボタンから pull
-   - blocks 表示が想定どおりか目視確認 (特に grip / touch は配置が保たれているか)
+1. 拡張リポジトリで対象コミットのハッシュを確認する
+2. アプリ層の pxt.json の `"mood-cube-blocks": "github:hideosasaki/mood-cube-blocks#<hash>"` を書き換える
+3. pxt.json だけをcommitしてpushする (main.ts / main.blocks には触らない)
+4. ユーザーにwebエディタでのpullと表示確認を依頼する。拡張のブロック構成が変わった場合 (ブロック廃止など) は、灰色ブロックの整理をwebエディタ側で行ってもらう
+
+### 実機テストビルド
+
+拡張の未pushの変更を実機で試すビルドは、pxt.json を一時的に `"file:../mood-cube-blocks"` へ切り替えて行う (local-hw-test-build のメモリ参照)。この切り替えは絶対にcommitせず、ビルド後すぐ元のGitHubハッシュ参照に戻す。
 
 ## 参照
 
-- 手順の背景と全体像: mood-cube-blocks/docs/development.md の「アプリ層を直すとき」
-- スクリプトの内部挙動: このディレクトリの sync-blocks.sh と restore-blocks-layout.js のコメント
+- 開発フローの全体像: mood-cube-blocks/docs/development.md の「アプリ層を直すとき」
