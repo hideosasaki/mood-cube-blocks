@@ -9,7 +9,9 @@ namespace cubeTouch {
     // ピン刺し検知は適応参照値+エッジ検出。根拠データは docs/measurements/2026-07-06-*.json
     const TOUCH_STUCK_EDGE = 50
     const TOUCH_RELEASE_EDGE = 40
-    const TOUCH_STUCK_CONFIRM = 2
+    // 接触が浅いと下振れが間欠的にしか閾値を越えない (2026-07-12実測、face5)。
+    // 刺さり確認は連続ではなく、10サンプル (500ms) の窓内に2回目の下振れがあれば成立
+    const TOUCH_STUCK_WINDOW = 10
     // 刺したままでも信号が最長650ms程度ベースラインへ戻り続けることがあり (2026-07-11実測、
     // docs/measurements/2026-07-11-touch.json)、確認4回 (200ms) では誤releaseする。
     // 実測波形の再生で14回から誤release0になるため、余裕を見て20回 (1000ms) とする
@@ -24,6 +26,7 @@ namespace cubeTouch {
     let _pinStuck: boolean = false
     let _ref: number = -1
     let _edgeCount: number = 0
+    let _edgeWindowLeft: number = 0
     let _warmupBuf: number[] = []
 
     //% blockId=cubeTouch_surface block="surface"
@@ -116,17 +119,19 @@ namespace cubeTouch {
         // 本物のエッジが検出できなくなるのを防ぐ
         if (!_pinStuck) {
             if (dev < -TOUCH_STUCK_EDGE) {
-                _edgeCount++
-                if (_edgeCount >= TOUCH_STUCK_CONFIRM) {
-                    _edgeCount = 0
+                if (_edgeWindowLeft > 0) {
+                    _edgeWindowLeft = 0
                     _pinStuck = true
                     _ref = raw
                     cubePower._markActive(input.runningTime())
                     control.raiseEvent(cubeInternal.EVT_SRC_PIN_STUCK, _surface)
                     cubePair._broadcastPin(_surface, true)
+                } else {
+                    _edgeWindowLeft = TOUCH_STUCK_WINDOW
                 }
                 return
             }
+            if (_edgeWindowLeft > 0) _edgeWindowLeft--
         } else {
             if (dev > TOUCH_RELEASE_EDGE) {
                 _edgeCount++
@@ -193,6 +198,7 @@ namespace cubeTouch {
     export function _testResetTouch(): void {
         _ref = -1
         _edgeCount = 0
+        _edgeWindowLeft = 0
         _pinStuck = false
         _warmupBuf = []
     }

@@ -6,6 +6,9 @@ import {
     decideMotion,
     decideTouch,
     groupByPrefix,
+    groupFlashScenarios,
+    hasScenarioRewind,
+    parseFlashLog,
     parseMotionLines,
     parseValueLines,
     percentile,
@@ -156,4 +159,81 @@ test("groupByPrefix: 完全一致とハイフン区切りprefixだけを拾う",
     assert.strictEqual(off.length, 3)
     const on = groupByPrefix(records, ["fork"])
     assert.strictEqual(on.length, 1)
+})
+
+// --- フラッシュ記録 (MY_DATA.HTM) の取り込み ---
+
+const FLASH_HTM = [
+    "<html><head><script>var x=1;</script></head><body>",
+    "not,a,data,row",
+    "Time (milliseconds),p0,sc",
+    "20,719,1",
+    "40,718,1",
+    "60,502,2",
+    "80,builtin,2",
+    "100,503,2",
+    "</body></html>",
+].join("\n")
+
+test("parseFlashLog: ヘッダ行以降の数値CSV行だけを拾う", function () {
+    assert.deepStrictEqual(parseFlashLog(FLASH_HTM), [
+        { t: 20, p0: 719, sc: 1 },
+        { t: 40, p0: 718, sc: 1 },
+        { t: 60, p0: 502, sc: 2 },
+        { t: 100, p0: 503, sc: 2 },
+    ])
+})
+
+test("parseFlashLog: ヘッダ前の行と列数不一致の行は棄却", function () {
+    const text = "5,700,1\nTime (milliseconds),p0,sc\n20,719\n40,718,1,9\n60,717,1\n"
+    assert.deepStrictEqual(parseFlashLog(text), [{ t: 60, p0: 717, sc: 1 }])
+})
+
+test("parseFlashLog: リセットでヘッダが再出現しても続きを読む", function () {
+    const text = "Time (milliseconds),p0,sc\n20,719,1\nTime (milliseconds),p0,sc\n20,650,2\n"
+    assert.deepStrictEqual(parseFlashLog(text), [
+        { t: 20, p0: 719, sc: 1 },
+        { t: 20, p0: 650, sc: 2 },
+    ])
+})
+
+test("parseFlashLog: タイムスタンプ列なしはtがNaNではなく-1", function () {
+    const text = "p0,sc\n719,1\n718,1\n"
+    assert.deepStrictEqual(parseFlashLog(text), [
+        { t: -1, p0: 719, sc: 1 },
+        { t: -1, p0: 718, sc: 1 },
+    ])
+})
+
+test("parseFlashLog: 空入力・ヘッダなしは空", function () {
+    assert.deepStrictEqual(parseFlashLog(""), [])
+    assert.deepStrictEqual(parseFlashLog("20,719,1\n"), [])
+})
+
+test("groupFlashScenarios: sc別にまとめ、タイムスタンプから秒数を出す", function () {
+    const rows = [
+        { t: 0, p0: 719, sc: 1 },
+        { t: 5000, p0: 718, sc: 1 },
+        { t: 6000, p0: 502, sc: 2 },
+        { t: 21000, p0: 503, sc: 2 },
+    ]
+    assert.deepStrictEqual(groupFlashScenarios(rows), [
+        { sc: 1, samples: [719, 718], seconds: 5 },
+        { sc: 2, samples: [502, 503], seconds: 15 },
+    ])
+})
+
+test("groupFlashScenarios: タイムスタンプなしは20ms周期からの概算", function () {
+    const rows: { t: number; p0: number; sc: number }[] = []
+    for (let i = 0; i < 250; i++) rows.push({ t: -1, p0: 700, sc: 1 })
+    const g = groupFlashScenarios(rows)
+    assert.strictEqual(g.length, 1)
+    assert.strictEqual(g[0].seconds, 5)
+})
+
+test("hasScenarioRewind: scの巻き戻り (前セッション消し忘れ) を検出", function () {
+    const ok = [{ t: 0, p0: 1, sc: 1 }, { t: 1, p0: 1, sc: 1 }, { t: 2, p0: 1, sc: 2 }]
+    const bad = [{ t: 0, p0: 1, sc: 8 }, { t: 1, p0: 1, sc: 1 }]
+    assert.strictEqual(hasScenarioRewind(ok), false)
+    assert.strictEqual(hasScenarioRewind(bad), true)
 })

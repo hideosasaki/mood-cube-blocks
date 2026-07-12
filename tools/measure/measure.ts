@@ -2,6 +2,7 @@
 //
 //   node built/measure/measure.js capture --label rest [--seconds 5] [--port /dev/cu.usbmodemXXX] [--session path] [--kind p0|motion]
 //   node built/measure/measure.js ingest  --label rest --file raw.txt [--session path] [--kind p0|motion]
+//   node built/measure/measure.js ingest-flash --file MY_DATA.HTM [--labels rest,hand,...] [--session path]
 //   node built/measure/measure.js list   [--session path]
 //   node built/measure/measure.js decide --mode touch|grip|motion [--session path]
 
@@ -15,6 +16,9 @@ import {
     decideTouch,
     formatStatsTable,
     groupByPrefix,
+    groupFlashScenarios,
+    hasScenarioRewind,
+    parseFlashLog,
     parseMotionLines,
     parseValueLines,
     poseRate,
@@ -81,6 +85,24 @@ function captureRaw(port: string, seconds: number): Promise<string> {
     })
 }
 
+function makeRecord(label: string, seconds: number, samples: number[]): CaptureRecord {
+    return {
+        label: label,
+        at: new Date().toISOString(),
+        seconds: seconds,
+        stats: computeStats(samples),
+        samples: samples,
+    }
+}
+
+function appendRecords(sessionPath: string, added: CaptureRecord[]): void {
+    const records = loadSession(sessionPath)
+    for (const r of added) records.push(r)
+    saveSession(sessionPath, records)
+    console.log(formatStatsTable(added))
+    console.log("saved: " + sessionPath + " (" + records.length + " records)")
+}
+
 function storeRecord(label: string, seconds: number, raw: string, sessionPath: string, kind: string | undefined): void {
     if (kind !== undefined && kind !== "p0" && kind !== "motion") {
         throw new Error("--kind は p0 か motion: " + kind)
@@ -104,20 +126,10 @@ function storeRecord(label: string, seconds: number, raw: string, sessionPath: s
             "MakeCode のシリアルコンソールが閉じているかを確認"
         )
     }
-    const record: CaptureRecord = {
-        label: label,
-        at: new Date().toISOString(),
-        seconds: seconds,
-        stats: computeStats(samples),
-        samples: samples,
-    }
+    const record = makeRecord(label, seconds, samples)
     if (kind === "motion") record.kind = kind
     if (rate !== undefined) record.poseRate = rate
-    const records = loadSession(sessionPath)
-    records.push(record)
-    saveSession(sessionPath, records)
-    console.log(formatStatsTable([record]))
-    console.log("saved: " + sessionPath + " (" + records.length + " records)")
+    appendRecords(sessionPath, [record])
 }
 
 async function cmdCapture(opts: { [key: string]: string }): Promise<void> {
@@ -141,6 +153,44 @@ function cmdIngest(opts: { [key: string]: string }): void {
     const seconds = opts["seconds"] ? parseInt(opts["seconds"], 10) : DEFAULT_SECONDS
     const sessionPath = opts["session"] || defaultSessionPath()
     storeRecord(label, seconds, fs.readFileSync(file, "utf8"), sessionPath, opts["kind"])
+}
+
+// フラッシュ記録ファーム (tools/measure/flashlog) のAボタン押下順とここの並びを揃える。
+// LEDのシナリオ番号1がrest、2がhand、3〜8がfork-face1〜6
+const FLASH_TOUCH_LABELS = [
+    "rest", "hand",
+    "fork-face1", "fork-face2", "fork-face3",
+    "fork-face4", "fork-face5", "fork-face6",
+]
+
+// A押下直後にBで止めた等の断片シナリオを弾く下限 (フラッシュ記録は概ね15〜25Hz)
+const FLASH_MIN_SAMPLES = 25
+
+function cmdIngestFlash(opts: { [key: string]: string }): void {
+    const file = opts["file"]
+    if (!file) throw new Error("--file は必須 (MICROBITドライブのMY_DATA.HTM)")
+    const sessionPath = opts["session"] || defaultSessionPath()
+    const labels = opts["labels"] ? opts["labels"].split(",") : FLASH_TOUCH_LABELS
+
+    const rows = parseFlashLog(fs.readFileSync(file, "utf8"))
+    if (rows.length === 0) {
+        throw new Error("データ行が見つからない。計測ファームで記録したMY_DATA.HTMか確認")
+    }
+    if (hasScenarioRewind(rows)) {
+        console.error("警告: シナリオ番号が巻き戻っている。前セッションの消し忘れ (A+B) の可能性。全scを取り込むが混在に注意")
+    }
+
+    const added: CaptureRecord[] = []
+    for (const g of groupFlashScenarios(rows)) {
+        const label = labels[g.sc - 1] || ("sc" + g.sc)
+        if (g.samples.length < FLASH_MIN_SAMPLES) {
+            console.error("スキップ: " + label + " はサンプル" + g.samples.length + "件のみ (記録し損ないの断片と判断)")
+            continue
+        }
+        added.push(makeRecord(label, g.seconds, g.samples))
+    }
+    if (added.length === 0) throw new Error("取り込めるシナリオがない")
+    appendRecords(sessionPath, added)
 }
 
 function cmdList(opts: { [key: string]: string }): void {
@@ -213,10 +263,11 @@ async function main(): Promise<void> {
     const { cmd, opts } = parseArgs(process.argv.slice(2))
     if (cmd === "capture") await cmdCapture(opts)
     else if (cmd === "ingest") cmdIngest(opts)
+    else if (cmd === "ingest-flash") cmdIngestFlash(opts)
     else if (cmd === "list") cmdList(opts)
     else if (cmd === "decide") cmdDecide(opts)
     else {
-        console.error("usage: measure.js capture|ingest|list|decide [--options]")
+        console.error("usage: measure.js capture|ingest|ingest-flash|list|decide [--options]")
         process.exitCode = 1
     }
 }

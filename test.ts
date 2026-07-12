@@ -177,16 +177,32 @@ function runTests(): void {
         assert(cubeTouch._isTouchSample(0) === false, "no ref during warmup")
     })
 
-    test("touch stuck: two consecutive down-edge samples stick, one does not", function () {
+    test("touch stuck: two down-edges within the window stick", function () {
         cubeTouch._testResetTouch()
         seedTouch(722)
         cubeTouch._testFeedTouchSample(570)
         assert(cubeTouch._localPinStuck() === false, "1st edge sample: not yet")
-        cubeTouch._testFeedTouchSample(722)
+        // 接触が浅いと商用ノイズの下振れが間欠的にしか閾値を越えない (2026-07-12実測)。
+        // 連続でなくても窓内 (10サンプル=500ms) に2回下振れがあれば刺さり確定
+        for (let i = 0; i < 8; i++) {
+            cubeTouch._testFeedTouchSample(722)
+        }
+        assert(cubeTouch._localPinStuck() === false, "baseline bounce keeps pending")
         cubeTouch._testFeedTouchSample(570)
-        assert(cubeTouch._localPinStuck() === false, "non-consecutive: counter reset")
+        assert(cubeTouch._localPinStuck() === true, "2nd edge within window: stuck")
+    })
+
+    test("touch stuck: window expiry forgets the first edge", function () {
+        cubeTouch._testResetTouch()
+        seedTouch(722)
         cubeTouch._testFeedTouchSample(570)
-        assert(cubeTouch._localPinStuck() === true, "2 consecutive edge samples: stuck")
+        for (let i = 0; i < 10; i++) {
+            cubeTouch._testFeedTouchSample(722)
+        }
+        cubeTouch._testFeedTouchSample(570)
+        assert(cubeTouch._localPinStuck() === false, "window expired: counts as 1st edge again")
+        cubeTouch._testFeedTouchSample(570)
+        assert(cubeTouch._localPinStuck() === true, "consecutive pair still sticks")
     })
 
     test("touch stuck: shallow dip below edge threshold does not stick", function () {

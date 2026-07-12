@@ -1,0 +1,22 @@
+{
+    "name": "mood-cube-measure-flashlog",
+    "description": "電池駆動でP0を計測しフラッシュ (MY_DATA.HTM) に記録する計測ファーム",
+    "dependencies": {
+        "core": "*",
+        "datalogger": "*"
+    },
+    "files": [
+        "main.ts"
+    ],
+    "targetVersions": {
+        "target": "8.0.22",
+        "targetId": "microbit"
+    },
+    "supportedTargets": [
+        "microbit"
+    ],
+    "preferredEditor": "tsprj",
+    "disablesVariants": [
+        "mbdal"
+    ]
+}

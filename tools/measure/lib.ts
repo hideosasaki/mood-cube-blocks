@@ -80,6 +80,79 @@ export function poseRate(samples: MotionSample[]): number {
     return posed / samples.length
 }
 
+// フラッシュ記録ファーム (tools/measure/flashlog) が書く MY_DATA.HTM の1行。
+// タイムスタンプ列がないときは t = -1
+export interface FlashRow {
+    t: number
+    p0: number
+    sc: number
+}
+
+export interface FlashScenario {
+    sc: number
+    samples: number[]
+    seconds: number
+}
+
+// MY_DATA.HTM は HTML ビューアの後ろに生CSVが続く構造。HTML 部分の形式に依存せず、
+// 「p0 と sc を含むヘッダ行」を見つけてから、列数一致かつ全列数値の行だけを拾う
+export function parseFlashLog(text: string): FlashRow[] {
+    const rows: FlashRow[] = []
+    let cols: string[] | null = null
+    let p0Idx = -1
+    let scIdx = -1
+    let tIdx = -1
+    for (const line of text.split("\n")) {
+        const fields = line.trim().split(",")
+        if (fields.indexOf("p0") >= 0 && fields.indexOf("sc") >= 0) {
+            cols = fields
+            p0Idx = fields.indexOf("p0")
+            scIdx = fields.indexOf("sc")
+            tIdx = fields.findIndex(f => f.startsWith("Time"))
+            continue
+        }
+        if (cols === null || fields.length !== cols.length) continue
+        const nums = fields.map(f => Number(f))
+        if (nums.some(n => Number.isNaN(n)) || fields.some(f => f === "")) continue
+        rows.push({
+            t: tIdx >= 0 ? nums[tIdx] : -1,
+            p0: nums[p0Idx],
+            sc: nums[scIdx],
+        })
+    }
+    return rows
+}
+
+const FLASH_SAMPLE_INTERVAL_MS = 20
+
+export function groupFlashScenarios(rows: FlashRow[]): FlashScenario[] {
+    const order: number[] = []
+    const bySc: { [sc: number]: FlashRow[] } = {}
+    for (const r of rows) {
+        if (!bySc[r.sc]) {
+            bySc[r.sc] = []
+            order.push(r.sc)
+        }
+        bySc[r.sc].push(r)
+    }
+    return order.map(sc => {
+        const group = bySc[sc]
+        const ts = group.map(r => r.t).filter(t => t >= 0)
+        const seconds = ts.length >= 2
+            ? Math.round((Math.max(...ts) - Math.min(...ts)) / 1000)
+            : Math.round(group.length * FLASH_SAMPLE_INTERVAL_MS / 1000)
+        return { sc: sc, samples: group.map(r => r.p0), seconds: seconds }
+    })
+}
+
+// sc は1セッション内で単調増加する。巻き戻りは前セッションの消し忘れ (A+B し忘れ) の兆候
+export function hasScenarioRewind(rows: FlashRow[]): boolean {
+    for (let i = 1; i < rows.length; i++) {
+        if (rows[i].sc < rows[i - 1].sc) return true
+    }
+    return false
+}
+
 export function percentile(sorted: number[], p: number): number {
     if (sorted.length === 0) throw new Error("percentile: empty input")
     const rank = Math.ceil((p / 100) * sorted.length) - 1
