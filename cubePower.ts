@@ -10,8 +10,9 @@ namespace cubePower {
     // 根拠: docs/measurements/2026-07-11-motion-fast.json
     const STILL_THRESHOLD = 60
     const PUTDOWN_STILL_MS = 4000
-    // 誤起床の再スリープ判定前にモーション窓1周分+αの観測時間を与える
-    const WAKE_SETTLE_MS = 150
+    // 誤起床の再スリープ判定前に、PICKUP確定に要するトリガー窓+確認窓が
+    // 完走できる観測時間を与える
+    const WAKE_SETTLE_MS = ACTIVE_SAMPLE_MS * MOTION_WINDOW_TICKS * 2 + 50
     export const IDLE_TIMEOUT_MS = 180000
 
     export const MOTION_EVT_NONE = 0
@@ -26,6 +27,7 @@ namespace cubePower {
     let _lastAccelZ: number = 0
     let _accelInitialized = false
     let _isMoving = false
+    let _pickupArmed = false
     let _stillBegan = 0
     let _windowMax = 0
     let _windowTick = 0
@@ -77,6 +79,9 @@ namespace cubePower {
         music.setBuiltInSpeakerEnabled(false)
         _sleeping = true
         while (_shouldEnterSleep(input.runningTime())) {
+            // スリープをまたいでarm状態が残ると、起床後の最初の窓だけでPICKUPが
+            // 確定してしまい衝撃フィルタが効かない
+            _pickupArmed = false
             power.lowPowerRequest(LowPowerMode.Wait)
             if (input.buttonIsPressed(Button.A) || input.buttonIsPressed(Button.B)) {
                 _markActive(input.runningTime())
@@ -182,15 +187,23 @@ namespace cubePower {
         return evt
     }
 
+    // 机への衝撃 (ものを置く等) は1窓のスパイクで終わり、実際の持ち上げは動きが
+    // 数窓続く (実測: docs/measurements/2026-07-13-motion-events.csv)。大差分の
+    // 窓だけではPICKUPを発火せず、次の窓でも動きが続いたときだけ発火する
     export function _stepMotion(diff: number, now: number): number {
         if (diff >= STILL_THRESHOLD) {
             _stillBegan = 0
-            if (!_isMoving && diff > MOTION_THRESHOLD) {
-                _isMoving = true
-                return MOTION_EVT_PICKUP
+            if (!_isMoving) {
+                if (_pickupArmed) {
+                    _pickupArmed = false
+                    _isMoving = true
+                    return MOTION_EVT_PICKUP
+                }
+                _pickupArmed = diff > MOTION_THRESHOLD
             }
             return MOTION_EVT_NONE
         }
+        _pickupArmed = false
         if (!_isMoving) return MOTION_EVT_NONE
         if (_stillBegan === 0) {
             _stillBegan = now
@@ -213,6 +226,7 @@ namespace cubePower {
 
     export function _testResetMotionState(): void {
         _isMoving = false
+        _pickupArmed = false
         _stillBegan = 0
         _windowMax = 0
         _windowTick = 0

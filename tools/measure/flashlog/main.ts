@@ -44,11 +44,31 @@ input.onButtonPressed(Button.B, function () {
 
 basic.showString("-")
 
+// 加速度は20msごとの前回サンプルとの3軸差分和 (cubePower._accelDiffと同じ計算) を
+// mo列に記録する。100ms窓の最大値化は解析側で行う
+let _lastX = 0
+let _lastY = 0
+let _lastZ = 0
+let _accelInit = false
+
 basic.forever(function () {
     if (_logging) {
+        const x = input.acceleration(Dimension.X)
+        const y = input.acceleration(Dimension.Y)
+        const z = input.acceleration(Dimension.Z)
+        let diff = 0
+        if (!_accelInit) {
+            _accelInit = true
+        } else {
+            diff = Math.abs(x - _lastX) + Math.abs(y - _lastY) + Math.abs(z - _lastZ)
+        }
+        _lastX = x
+        _lastY = y
+        _lastZ = z
         datalogger.log(
             datalogger.createCV("p0", pins.analogReadPin(AnalogPin.P0)),
-            datalogger.createCV("sc", _scenario)
+            datalogger.createCV("sc", _scenario),
+            datalogger.createCV("mo", diff)
         )
     }
     basic.pause(20)

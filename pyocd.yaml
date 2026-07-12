@@ -1,0 +1,3 @@
+## macOSではCMSIS-DAP v2 (libusb bulk) のinterface claimに失敗するため、
+## HID経由のv1を強制する。CLIの -O では効かない (pyocd/pyOCD#1556)
+cmsis_dap.prefer_v1: True

@@ -429,33 +429,63 @@ function runTests(): void {
         assertEq(cubePower._stepMotion(30, 1000), cubePower.MOTION_EVT_NONE, "no event")
     })
 
-    test("stepMotion: still + large diff -> PICKUP", function () {
+    // 持ち上げは「トリガー窓 (>MOTION) の次の窓でも動き (>=STILL) が続く」で確定する。
+    // 以下のヘルパーで moving 状態に入れる (PICKUP は2窓目で発火)
+    function enterMoving(t0: number): void {
+        cubePower._stepMotion(250, t0)
+        cubePower._stepMotion(100, t0 + 100)
+    }
+
+    test("stepMotion: large diff alone does not fire PICKUP (desk impact)", function () {
         cubePower._testResetMotionState()
-        assertEq(cubePower._stepMotion(250, 1000), cubePower.MOTION_EVT_PICKUP, "pickup fired")
+        assertEq(cubePower._stepMotion(250, 1000), cubePower.MOTION_EVT_NONE, "trigger window only")
+        assertEq(cubePower._stepMotion(30, 1100), cubePower.MOTION_EVT_NONE, "quiet next window cancels")
+        assertEq(cubePower._stepMotion(30, 1200), cubePower.MOTION_EVT_NONE, "stays still")
     })
 
-    test("stepMotion: still + medium diff does not fire PICKUP", function () {
+    test("stepMotion: sustained motion after trigger fires PICKUP", function () {
         cubePower._testResetMotionState()
-        assertEq(cubePower._stepMotion(100, 1000), cubePower.MOTION_EVT_NONE, "under pickup threshold")
-        assertEq(cubePower._stepMotion(250, 1100), cubePower.MOTION_EVT_PICKUP, "still in still state, so next large diff fires")
+        assertEq(cubePower._stepMotion(250, 1000), cubePower.MOTION_EVT_NONE, "trigger window")
+        assertEq(cubePower._stepMotion(100, 1100), cubePower.MOTION_EVT_PICKUP, "next window still moving, fires")
+    })
+
+    test("stepMotion: large diffs during confirmation also count", function () {
+        cubePower._testResetMotionState()
+        assertEq(cubePower._stepMotion(250, 1000), cubePower.MOTION_EVT_NONE, "trigger window")
+        assertEq(cubePower._stepMotion(250, 1100), cubePower.MOTION_EVT_PICKUP, "large diff also confirms")
+    })
+
+    test("stepMotion: cancelled trigger leaves still state intact", function () {
+        cubePower._testResetMotionState()
+        cubePower._stepMotion(250, 1000)
+        cubePower._stepMotion(30, 1100)
+        assertEq(cubePower._stepMotion(250, 2000), cubePower.MOTION_EVT_NONE, "new trigger window")
+        assertEq(cubePower._stepMotion(100, 2100), cubePower.MOTION_EVT_PICKUP, "next window confirms")
+    })
+
+    test("stepMotion: still + medium diff does not trigger", function () {
+        cubePower._testResetMotionState()
+        assertEq(cubePower._stepMotion(100, 1000), cubePower.MOTION_EVT_NONE, "under trigger threshold")
+        assertEq(cubePower._stepMotion(100, 1100), cubePower.MOTION_EVT_NONE, "medium diff never confirms without trigger")
+        assertEq(cubePower._stepMotion(100, 1200), cubePower.MOTION_EVT_NONE, "still no event")
     })
 
     test("stepMotion: continued large diff does not re-fire PICKUP", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(250, 1000)
-        assertEq(cubePower._stepMotion(250, 1050), cubePower.MOTION_EVT_NONE, "no re-fire")
-        assertEq(cubePower._stepMotion(250, 1100), cubePower.MOTION_EVT_NONE, "still no re-fire")
+        enterMoving(1000)
+        assertEq(cubePower._stepMotion(250, 1200), cubePower.MOTION_EVT_NONE, "no re-fire")
+        assertEq(cubePower._stepMotion(250, 1300), cubePower.MOTION_EVT_NONE, "still no re-fire")
     })
 
     test("stepMotion: moving + first quiet sample does not fire yet", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(250, 1000)
-        assertEq(cubePower._stepMotion(30, 1100), cubePower.MOTION_EVT_NONE, "still timer started")
+        enterMoving(1000)
+        assertEq(cubePower._stepMotion(30, 1200), cubePower.MOTION_EVT_NONE, "still timer started")
     })
 
     test("stepMotion: PUTDOWN fires after quiet continues past 4000ms", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(250, 1000)
+        enterMoving(1000)
         cubePower._stepMotion(30, 2000)
         assertEq(cubePower._stepMotion(30, 5000), cubePower.MOTION_EVT_NONE, "3000ms still, not yet")
         assertEq(cubePower._stepMotion(30, 6000), cubePower.MOTION_EVT_PUTDOWN, "4000ms still, fires")
@@ -463,7 +493,7 @@ function runTests(): void {
 
     test("stepMotion: medium diff resets the still timer (natural hand hold)", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(250, 1000)
+        enterMoving(1000)
         cubePower._stepMotion(30, 2000)
         assertEq(cubePower._stepMotion(100, 3000), cubePower.MOTION_EVT_NONE, "medium diff, timer reset")
         assertEq(cubePower._stepMotion(30, 4000), cubePower.MOTION_EVT_NONE, "still restart")
@@ -473,19 +503,20 @@ function runTests(): void {
 
     test("stepMotion: large diff during still window aborts putdown", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(250, 1000)
+        enterMoving(1000)
         cubePower._stepMotion(30, 2000)
         assertEq(cubePower._stepMotion(250, 2500), cubePower.MOTION_EVT_NONE, "motion resumes, no event")
         assertEq(cubePower._stepMotion(30, 3000), cubePower.MOTION_EVT_NONE, "still restart")
         assertEq(cubePower._stepMotion(30, 7000), cubePower.MOTION_EVT_PUTDOWN, "4000ms from new still start")
     })
 
-    test("stepMotion: PUTDOWN restores still state, next large diff fires PICKUP", function () {
+    test("stepMotion: PUTDOWN restores still state, next pickup needs confirmation again", function () {
         cubePower._testResetMotionState()
-        cubePower._stepMotion(250, 1000)
+        enterMoving(1000)
         cubePower._stepMotion(30, 2000)
         cubePower._stepMotion(30, 6000)
-        assertEq(cubePower._stepMotion(250, 6500), cubePower.MOTION_EVT_PICKUP, "pickup after putdown")
+        assertEq(cubePower._stepMotion(250, 6500), cubePower.MOTION_EVT_NONE, "trigger after putdown")
+        assertEq(cubePower._stepMotion(100, 6600), cubePower.MOTION_EVT_PICKUP, "next window confirms")
     })
 
     test("feedMotionSample: decision uses window max every 5th sample", function () {
@@ -494,16 +525,22 @@ function runTests(): void {
         assertEq(cubePower._feedMotionSample(250, 1020), cubePower.MOTION_EVT_NONE, "spike mid-window, no decision yet")
         assertEq(cubePower._feedMotionSample(0, 1040), cubePower.MOTION_EVT_NONE, "sample 3")
         assertEq(cubePower._feedMotionSample(0, 1060), cubePower.MOTION_EVT_NONE, "sample 4")
-        assertEq(cubePower._feedMotionSample(0, 1080), cubePower.MOTION_EVT_PICKUP, "window max 250 fires at 5th sample")
+        assertEq(cubePower._feedMotionSample(0, 1080), cubePower.MOTION_EVT_NONE, "window max 250 arms trigger at 5th sample")
+        for (let t = 0; t < 4; t++) {
+            assertEq(cubePower._feedMotionSample(100, 1100 + t * 20), cubePower.MOTION_EVT_NONE, "confirm window sample " + t)
+        }
+        assertEq(cubePower._feedMotionSample(100, 1180), cubePower.MOTION_EVT_PICKUP, "confirm window completes, fires")
     })
 
     test("feedMotionSample: window max does not leak into later windows", function () {
         cubePower._testResetMotionState()
-        cubePower._feedMotionSample(250, 1000)
-        cubePower._feedMotionSample(0, 1020)
-        cubePower._feedMotionSample(0, 1040)
-        cubePower._feedMotionSample(0, 1060)
-        assertEq(cubePower._feedMotionSample(0, 1080), cubePower.MOTION_EVT_PICKUP, "spike window fires")
+        for (let t = 0; t < 5; t++) {
+            cubePower._feedMotionSample(250, 1000 + t * 20)
+        }
+        for (let t = 0; t < 4; t++) {
+            cubePower._feedMotionSample(100, 1100 + t * 20)
+        }
+        assertEq(cubePower._feedMotionSample(100, 1180), cubePower.MOTION_EVT_PICKUP, "sustained motion fires")
         for (let t = 0; t < 4; t++) {
             assertEq(cubePower._feedMotionSample(30, 2000 + t * 20), cubePower.MOTION_EVT_NONE, "quiet window 1 sample " + t)
         }
