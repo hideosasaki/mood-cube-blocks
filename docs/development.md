@@ -72,7 +72,14 @@ mood-cube-blocksは公開APIを提供する側、grip/touch/blocks-testは利用
 
 アプリ層は子供がMakeCodeのwebエディタ ([https://makecode.microbit.org/](https://makecode.microbit.org/)) でblocksを並べて作る。コードの編集はwebエディタでのみ行い、ローカルから `main.ts` / `main.blocks` を変更しない。ローカルで `main.ts` を編集してdecompileで `main.blocks` を再同期する運用は、blocksのレイアウトが初期化される事故が起きたため廃止した (2026-07-12)。
 
-ローカルからやってよいのは、`pxt.json` の拡張依存ハッシュの手動更新だけ。手順と制約は [makecode-app-edit skill](../.claude/skills/makecode-app-edit/SKILL.md) に書いてある。ハッシュ更新のpush後は、webエディタでプロジェクトを開き、画面下部のGitHubボタンからpullして、blocks表示を目視確認する。
+ローカルからやってよいのは、`pxt.json` の拡張依存ハッシュの手動更新だけ。手順は次のとおり。
+
+1. 拡張リポジトリで対象コミットのハッシュを確認する
+2. アプリ層の `pxt.json` の `"mood-cube-blocks": "github:hideosasaki/mood-cube-blocks#<hash>"` を書き換える
+3. `pxt.json` だけをcommitしてpushする (`main.ts` / `main.blocks` には触らない)
+4. webエディタでプロジェクトを開き、画面下部のGitHubボタンからpullして、blocks表示を目視確認する。拡張のブロック構成が変わった場合 (ブロック廃止など) は、灰色ブロックの整理もwebエディタ側で行う
+
+拡張の未pushの変更を実機で試すときは、`pxt.json` を一時的に `"file:../mood-cube-blocks"` へ切り替えてビルドする。この切り替えはcommitせず、ビルド後すぐGitHubハッシュ参照に戻す。
 
 - mood-cube-grip: [https://makecode.microbit.org/#github:hideosasaki/mood-cube-grip](https://makecode.microbit.org/#github:hideosasaki/mood-cube-grip)
 - mood-cube-touch: [https://makecode.microbit.org/#github:hideosasaki/mood-cube-touch](https://makecode.microbit.org/#github:hideosasaki/mood-cube-touch)
