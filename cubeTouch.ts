@@ -38,7 +38,7 @@ namespace cubeTouch {
     export function onSurfaceChange(handler: (face: number) => void): void {
         control.onEvent(cubeInternal.EVT_SRC_SURFACE, 0, function () {
             handler(control.eventValue())
-        })
+        }, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     //% blockId=cubeTouch_onPinStuck block="on pin stuck"
@@ -46,17 +46,17 @@ namespace cubeTouch {
     export function onPinStuck(handler: (face: number) => void): void {
         control.onEvent(cubeInternal.EVT_SRC_PIN_STUCK, 0, function () {
             handler(control.eventValue())
-        })
+        }, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     //% blockId=cubeTouch_onPickUp block="on picked up"
     export function onPickUp(handler: () => void): void {
-        control.onEvent(cubeInternal.EVT_SRC_TOUCH_PICKUP, 0, handler)
+        control.onEvent(cubeInternal.EVT_SRC_TOUCH_PICKUP, 0, handler, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     //% blockId=cubeTouch_onPutDown block="on put down"
     export function onPutDown(handler: () => void): void {
-        control.onEvent(cubeInternal.EVT_SRC_TOUCH_PUTDOWN, 0, handler)
+        control.onEvent(cubeInternal.EVT_SRC_TOUCH_PUTDOWN, 0, handler, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     export function _initAsTouch(): void {

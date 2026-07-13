@@ -21,22 +21,22 @@ namespace cubeGrip {
 
     //% blockId=cubeGrip_onGripStart block="on grip started"
     export function onGripStart(handler: () => void): void {
-        control.onEvent(cubeInternal.EVT_SRC_GRIP_START, 0, handler)
+        control.onEvent(cubeInternal.EVT_SRC_GRIP_START, 0, handler, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     //% blockId=cubeGrip_onRelease block="on grip released"
     export function onRelease(handler: () => void): void {
-        control.onEvent(cubeInternal.EVT_SRC_GRIP_RELEASE, 0, handler)
+        control.onEvent(cubeInternal.EVT_SRC_GRIP_RELEASE, 0, handler, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     //% blockId=cubeGrip_onMaxReached block="on max reached"
     export function onMaxReached(handler: () => void): void {
-        control.onEvent(cubeInternal.EVT_SRC_GRIP_MAX_REACHED, 0, handler)
+        control.onEvent(cubeInternal.EVT_SRC_GRIP_MAX_REACHED, 0, handler, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     //% blockId=cubeGrip_onMaxReleased block="on max released"
     export function onMaxReleased(handler: () => void): void {
-        control.onEvent(cubeInternal.EVT_SRC_GRIP_MAX_RELEASED, 0, handler)
+        control.onEvent(cubeInternal.EVT_SRC_GRIP_MAX_RELEASED, 0, handler, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     //% blockId=cubeGrip_onChange block="on grip strength changed"
@@ -44,17 +44,17 @@ namespace cubeGrip {
     export function onChange(handler: (strength: number) => void): void {
         control.onEvent(cubeInternal.EVT_SRC_GRIP_CHANGED, 0, function () {
             handler(control.eventValue())
-        })
+        }, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     //% blockId=cubeGrip_onPickUp block="on picked up"
     export function onPickUp(handler: () => void): void {
-        control.onEvent(cubeInternal.EVT_SRC_GRIP_PICKUP, 0, handler)
+        control.onEvent(cubeInternal.EVT_SRC_GRIP_PICKUP, 0, handler, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     //% blockId=cubeGrip_onPutDown block="on put down"
     export function onPutDown(handler: () => void): void {
-        control.onEvent(cubeInternal.EVT_SRC_GRIP_PUTDOWN, 0, handler)
+        control.onEvent(cubeInternal.EVT_SRC_GRIP_PUTDOWN, 0, handler, cubeInternal.USER_HANDLER_FLAGS)
     }
 
     export function _initAsGrip(): void {

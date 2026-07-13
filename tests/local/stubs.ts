@@ -13,6 +13,7 @@ Math.idiv = function (a: number, b: number): number {
 }
 
 enum AnalogPin { P0, P1 }
+const enum EventFlags { Reentrant = 8, QueueIfBusy = 16, DropIfBusy = 32 }
 enum Button { A, B }
 enum DigitalPin { P1, P2 }
 enum Dimension { X, Y, Z }
@@ -41,7 +42,7 @@ namespace basic {
 }
 
 namespace control {
-    export function onEvent(src: number, value: number, handler: () => void): void { }
+    export function onEvent(src: number, value: number, handler: () => void, flags?: number): void { }
     export function raiseEvent(src: number, value: number): void { }
     export function eventValue(): number { return 0 }
     export function inBackground(body: () => void): void { }

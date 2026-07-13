@@ -41,6 +41,11 @@ namespace cubeInternal {
     export const EVT_SRC_MOTION_PICKUP = 0xCB0D
     export const EVT_SRC_MOTION_PUTDOWN = 0xCB0E
 
+    // 公開イベントブロックの登録フラグ。既定 (QueueIfBusy) だとハンドラ実行中の連打が
+    // キューに溜まり、wait入りハンドラの終了後に順次再生されてしまう。フィジェットの
+    // 体験としては「反応中の入力は無視」が自然なので、実行中に来た同種イベントは捨てる
+    export const USER_HANDLER_FLAGS = EventFlags.DropIfBusy
+
     export const MSG_TOUCH_SURFACE = "ts"
     export const MSG_TOUCH_PIN = "tp"
     export const MSG_GRIP_EVENT = "ge"
