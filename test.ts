@@ -550,6 +550,22 @@ function runTests(): void {
         }
         assertEq(cubePower._feedMotionSample(30, 7080), cubePower.MOTION_EVT_PUTDOWN, "putdown fires; a leaked spike would have reset the timer")
     })
+
+    test("stepP0Level: 非アクティブ→アクティブの遷移だけが活動になる", function () {
+        cubePower._testResetP0Level()
+        assert(!cubePower._stepP0Level(false), "clean stays inactive")
+        assert(cubePower._stepP0Level(true), "rise counts as activity")
+        assert(!cubePower._stepP0Level(true), "sustained level does not count")
+        assert(!cubePower._stepP0Level(true), "still sustained")
+        assert(!cubePower._stepP0Level(false), "fall does not count")
+        assert(cubePower._stepP0Level(true), "re-rise counts again")
+    })
+
+    test("stepP0Level: 初回サンプルがアクティブなら活動になる (スリープ中の刺しを1秒で拾う)", function () {
+        cubePower._testResetP0Level()
+        assert(cubePower._stepP0Level(true), "first sample active fires")
+        assert(!cubePower._stepP0Level(true), "then sustained is quiet")
+    })
 }
 
 serial.writeLine("=== mood-cube-blocks tests ===")

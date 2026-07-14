@@ -35,6 +35,7 @@ namespace cubePower {
     let _windowTick = 0
     let _sleeping = false
     let _pendingPickup = false
+    let _p0LevelActive = false
 
     export function _init(): void {
         if (_initialized) return
@@ -108,11 +109,30 @@ namespace cubePower {
         if (_isMoving) {
             _markActive(input.runningTime())
         }
-        if (cubeInternal.role === CubeRole.Touch && cubeTouch._isTouchSample(pins.analogReadPin(AnalogPin.P0))) {
-            _markActive(input.runningTime())
-        } else if (cubeInternal.role === CubeRole.Grip && cubeGrip._isPressSample(pins.analogReadPin(AnalogPin.P0))) {
-            _markActive(input.runningTime())
+        if (cubeInternal.role === CubeRole.Touch) {
+            if (_stepP0Level(cubeTouch._isTouchSample(pins.analogReadPin(AnalogPin.P0)))) {
+                _markActive(input.runningTime())
+            }
+        } else if (cubeInternal.role === CubeRole.Grip) {
+            if (_stepP0Level(cubeGrip._isPressSample(pins.analogReadPin(AnalogPin.P0)))) {
+                _markActive(input.runningTime())
+            }
         }
+    }
+
+    // P0レベル判定 (触感: タッチ、握り: 圧力) は非アクティブ→アクティブの遷移だけを
+    // 活動と見なす。レベルの継続でタイマーをリセットすると、フォークの置き接触や
+    // P0の持続的下振れのような「イベントを発火しない状態」が永久にスリープを妨げる
+    // (要件は「公開入力イベントが発火していないときにスリープ」)。遷移方式なら
+    // スリープ中の刺し・握りは従来どおり最大1秒の周期wakeで拾える
+    export function _stepP0Level(active: boolean): boolean {
+        const rose = active && !_p0LevelActive
+        _p0LevelActive = active
+        return rose
+    }
+
+    export function _testResetP0Level(): void {
+        _p0LevelActive = false
     }
 
     export function _accelDiff(x: number, y: number, z: number): number {
