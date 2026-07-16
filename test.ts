@@ -147,6 +147,7 @@ function runTests(): void {
 
     test("calibration: raised baseline clears phantom strength", function () {
         cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
         assertEq(cubeGrip._rawToStrength(150), 1, "phantom strength before calibration")
         cubeGrip._applyCalibration([150, 150, 150, 150, 150, 150])
         assertEq(cubeGrip._rawToStrength(150), 0, "phantom cleared")
@@ -162,15 +163,73 @@ function runTests(): void {
         assertEq(cubeGrip._testGetStrength(), 0, "strength stays 0 while put down")
     })
 
-    test("pickup gate: pickup re-enables strength processing", function () {
+    test("hand floor: strength frozen at 0 until first window after pickup", function () {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
-        cubeGrip._testFeedSample(300)
         cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 5; i++) cubeGrip._testFeedSample(180)
+        assertEq(cubeGrip._testGetStrength(), 0, "frozen before floor is established")
+        cubeGrip._testFeedSample(180)
+        assertEq(cubeGrip._testGetHandFloor(), 180, "floor = first window median")
+    })
+
+    test("hand floor: relaxed hold above desk baseline reads 0", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 12; i++) cubeGrip._testFeedSample(180)
+        assertEq(cubeGrip._testGetStrength(), 0, "hold preload 180 > baseline 125 but reads 0")
+    })
+
+    test("hand floor: squeeze from relaxed hold reads relative strength", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
         cubeGrip._testFeedSample(300)
         cubeGrip._testFeedSample(300)
         cubeGrip._testFeedSample(300)
-        assertEq(cubeGrip._testGetStrength(), 7, "strength follows samples after pickup")
+        assertEq(cubeGrip._testGetStrength(), 6, "raw 300 vs zero 200 (floor 180 + margin 20)")
+    })
+
+    test("hand floor: sustained grip keeps strength indefinitely", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
+        for (let i = 0; i < 30; i++) cubeGrip._testFeedSample(300)
+        assertEq(cubeGrip._testGetStrength(), 6, "grip windows never raise the floor")
+        assertEq(cubeGrip._testGetHandFloor(), 180, "floor stays at pre-squeeze hold")
+    })
+
+    test("hand floor: release back to relaxed hold returns to 0", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(300)
+        for (let i = 0; i < 4; i++) cubeGrip._testFeedSample(180)
+        assertEq(cubeGrip._testGetStrength(), 0, "back to hold level = 0")
+    })
+
+    test("hand floor: ratchets down when a looser hold is seen", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(220)
+        assertEq(cubeGrip._testGetHandFloor(), 220, "initial floor from grab")
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
+        assertEq(cubeGrip._testGetHandFloor(), 180, "floor follows the loosest hold")
+    })
+
+    test("hand floor: reset on each pickup", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        assertEq(cubeGrip._testGetHandFloor(), -1, "floor cleared for the new session")
     })
 
     test("pickup gate: putdown clears active strength to 0", function () {

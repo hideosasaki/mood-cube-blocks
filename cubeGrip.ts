@@ -1,4 +1,13 @@
 //% color="#E63946" weight=209 icon="\uf255" block="キューブ握り"
+// 「握っていなければ強さ0」を3つの独立した機構で守る。
+// 1. 時間ヒステリシス (processSample): 段差境界のサンプルノイズによる速い揺らぎを抑える
+// 2. ピックアップゲート+置き中baseline追従 (_setPickedUp / feedWindow): 机置き中の
+//    予圧ドリフトによる幽霊値・幽霊イベントを遮断し、置いている間に無圧点を較正する
+// 3. 在手ゼロ点 (_handFloor): 「握らずに持っているだけ」の手の予圧は人・持ち方で毎回
+//    違い、絶対値の定数では先回りできない。PICKUP以降に観測した6サンプル中央値の
+//    最小をその持ち方のゼロ点とし、強さはそこからの相対値で量子化する。握り続ける限り
+//    ゼロ点は上がらないので、長時間の握り込みは維持される。受容する限界: 置いた状態から
+//    一度も緩めずに掴み上げて握り続けた場合、最初に緩めるまで強さが実際より低く出る
 namespace cubeGrip {
     // 最終組み立て (LCX-300 3面巻き+布仕上げ+1MΩ分圧) の実測から決定。
     // docs/measurements/2026-07-16-assembled.json の rest-loosened (無圧103) /
@@ -24,6 +33,9 @@ namespace cubeGrip {
     // _applyCalibrationのソートで中身が壊れても次の充填で全上書きされるので問題ない
     let _trackBuf: number[] = [0, 0, 0, 0, 0, 0]
     let _trackLen = 0
+    // 在手ゼロ点。-1は未確立 (最初の窓が完了するまで強さ判定を凍結する。持ち上げた
+    // 瞬間の掴み力をゼロ点や強さとして誤採用しないため)
+    let _handFloor = -1
 
     //% blockId=cubeGrip_strength block="strength"
     export function strength(): number {
@@ -108,10 +120,12 @@ namespace cubeGrip {
     }
 
     export function _rawToStrength(raw: number): number {
-        if (raw <= _rawZeroMax) return 0
+        // 在手中はその持ち方のゼロ点、それ以外 (未確立・テスト直呼び) は無圧baseline
+        const zero = _handFloor >= 0 ? _handFloor + BASELINE_MARGIN : _rawZeroMax
+        if (raw <= zero) return 0
         if (raw >= RAW_FULL) return 9
-        const span = RAW_FULL - _rawZeroMax
-        const v = Math.idiv((raw - _rawZeroMax) * 9 + (span >> 1), span)
+        const span = RAW_FULL - zero
+        const v = Math.idiv((raw - zero) * 9 + (span >> 1), span)
         if (v < 1) return 1
         if (v > 9) return 9
         return v
@@ -129,6 +143,7 @@ namespace cubeGrip {
         _candidate = 0
         _stableCount = 0
         _trackLen = 0
+        _handFloor = -1
         if (!picked && _strength > 0) {
             const prev = _strength
             _strength = 0
@@ -136,22 +151,26 @@ namespace cubeGrip {
         }
     }
 
-    // 置き状態のbaseline追従。6サンプル (300ms) ごとに較正を試みる。放置されれば
-    // 常時この追従が働くので、スリープ突入時の一括較正は持たない。無圧が200を超える
-    // まで締まった個体は追従が止まるが、そこまで来ると動作幅が残っていないので
-    // 巻き直しが必要
-    function trackBaseline(raw: number): void {
+    // 6サンプル (300ms) ごとの窓処理。置き中は無圧baselineの較正 (放置されれば常時
+    // 働くので、スリープ突入時の一括較正は持たない。無圧が200を超えるまで締まった個体は
+    // 追従が止まるが、そこまで来ると動作幅が残っていないので巻き直しが必要)。
+    // 在手中は窓中央値の最小をゼロ点として追跡する (中央値なので離した直後の瞬間的な
+    // 跳ね戻りではゼロ点が下がらない)
+    function feedWindow(raw: number): void {
         _trackBuf[_trackLen++] = raw
         if (_trackLen < BASELINE_SAMPLES) return
-        _applyCalibration(_trackBuf)
         _trackLen = 0
+        if (_pickedUp) {
+            const m = cubeInternal._medianInPlace(_trackBuf)
+            if (_handFloor < 0 || m < _handFloor) _handFloor = m
+        } else {
+            _applyCalibration(_trackBuf)
+        }
     }
 
     function processSample(raw: number): void {
-        if (!_pickedUp) {
-            trackBaseline(raw)
-            return
-        }
+        feedWindow(raw)
+        if (!_pickedUp || _handFloor < 0) return
         const target = _rawToStrength(raw)
         if (target === _strength) {
             _stableCount = 0
@@ -212,6 +231,12 @@ namespace cubeGrip {
         _rawZeroMax = RAW_ZERO_MAX_DEFAULT
         _pickedUp = true
         _trackLen = 0
+        // 在手ゼロ点=デフォルトbaselineの状態から始める (従来テストの前提を保つ)
+        _handFloor = RAW_ZERO_MAX_DEFAULT - BASELINE_MARGIN
+    }
+
+    export function _testGetHandFloor(): number {
+        return _handFloor
     }
 
     export function _testGetRawZeroMax(): number {
