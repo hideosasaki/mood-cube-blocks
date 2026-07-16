@@ -5,9 +5,13 @@
 //    予圧ドリフトによる幽霊値・幽霊イベントを遮断し、置いている間に無圧点を較正する
 // 3. 在手ゼロ点 (_handFloor): 「握らずに持っているだけ」の手の予圧は人・持ち方で毎回
 //    違い、絶対値の定数では先回りできない。PICKUP以降に観測した6サンプル中央値の
-//    最小をその持ち方のゼロ点とし、強さはそこからの相対値で量子化する。握り続ける限り
-//    ゼロ点は上がらないので、長時間の握り込みは維持される。受容する限界: 置いた状態から
-//    一度も緩めずに掴み上げて握り続けた場合、最初に緩めるまで強さが実際より低く出る
+//    最小をその持ち方のゼロ点とし、強さはそこからの相対値で量子化する。強さ1以上の間は
+//    ゼロ点は上がらないので、長時間の握り込みは維持される。一方で強さ0の間は窓ごとに
+//    少しずつ現在の窓中央値へ引き上げる (下方は即時ラチェット、上方は遅い追従)。
+//    持ち替えや指の脱力で一瞬だけ緩んだ窓の最小値がゼロ点として固定されると、以降
+//    普通に持っているだけの予圧が幽霊の1〜2として出続けるため。受容する限界: 置いた
+//    状態から一度も緩めずに掴み上げて握り続けた場合、最初に緩めるまで強さが実際より
+//    低く出る
 namespace cubeGrip {
     // 最終組み立て (LCX-300 3面巻き+布仕上げ+1MΩ分圧) の実測から決定。
     // docs/measurements/2026-07-16-assembled.json の rest-loosened (無圧103) /
@@ -17,6 +21,18 @@ namespace cubeGrip {
     const RAW_FULL = 349
     const BASELINE_SAMPLES = 6
     const BASELINE_MARGIN = 20
+    // 在手ゼロ点に載せる不感帯。机上のBASELINE_MARGIN (ADCノイズ±5相当) と違い、
+    // 「握らずに持っているだけ」の指の当たりの揺れを吸収する必要がある。
+    // docs/measurements/2026-07-16-hold.json の hold-natural (握らず自然に持ち回す
+    // 26秒) の再生シミュレーションで、余裕20は幽霊イベント20件、80なら上方追従
+    // ありで0件・追従が間に合わない場合でも2件。強さ1にはっきりした握りが要る
+    // 代償は体験判断として受容済み (2026-07-16)
+    const HAND_MARGIN = 80
+    // 強さ0の間のゼロ点上方追従の窓あたり上限。速すぎるとゆっくりした握り込みを
+    // ゼロ点が追いかけて食ってしまう。8/300ms ≈ 27counts/s は持ち回しの予圧変動
+    // (hold-naturalで窓中央値8〜89) を追い切り、意図的な握り (数百counts/s) には
+    // 追いつかない
+    const FLOOR_RISE_STEP = 8
 
     let _strength: number = 0
     let _initialized = false
@@ -145,7 +161,7 @@ namespace cubeGrip {
 
     export function _rawToStrength(raw: number): number {
         // 在手中はその持ち方のゼロ点、それ以外 (未確立・テスト直呼び) は無圧baseline
-        const zero = _handFloor >= 0 ? _handFloor + BASELINE_MARGIN : _rawZeroMax
+        const zero = _handFloor >= 0 ? _handFloor + HAND_MARGIN : _rawZeroMax
         if (raw <= zero) return 0
         if (raw >= RAW_FULL) return 9
         const span = RAW_FULL - zero
@@ -186,7 +202,11 @@ namespace cubeGrip {
         _trackLen = 0
         if (_pickedUp) {
             const m = cubeInternal._medianInPlace(_trackBuf)
-            if (_handFloor < 0 || m < _handFloor) _handFloor = m
+            if (_handFloor < 0 || m < _handFloor) {
+                _handFloor = m
+            } else if (_strength === 0) {
+                _handFloor = Math.min(m, _handFloor + FLOOR_RISE_STEP)
+            }
         } else {
             _applyCalibration(_trackBuf)
         }
@@ -260,7 +280,7 @@ namespace cubeGrip {
         _trackLen = 0
         _notified = 0
         // 在手ゼロ点=デフォルトbaselineの状態から始める (従来テストの前提を保つ)
-        _handFloor = RAW_ZERO_MAX_DEFAULT - BASELINE_MARGIN
+        _handFloor = RAW_ZERO_MAX_DEFAULT - HAND_MARGIN
     }
 
     export function _testGetHandFloor(): number {

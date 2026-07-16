@@ -230,7 +230,7 @@ function runTests(): void {
         cubeGrip._testFeedSample(300)
         cubeGrip._testFeedSample(300)
         cubeGrip._testFeedSample(300)
-        assertEq(cubeGrip._testGetStrength(), 6, "raw 300 vs zero 200 (floor 180 + margin 20)")
+        assertEq(cubeGrip._testGetStrength(), 4, "raw 300 vs zero 260 (floor 180 + hand margin 80)")
     })
 
     test("hand floor: sustained grip keeps strength indefinitely", function () {
@@ -239,7 +239,7 @@ function runTests(): void {
         cubeGrip._setPickedUp(true)
         for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
         for (let i = 0; i < 30; i++) cubeGrip._testFeedSample(300)
-        assertEq(cubeGrip._testGetStrength(), 6, "grip windows never raise the floor")
+        assertEq(cubeGrip._testGetStrength(), 4, "grip windows never raise the floor")
         assertEq(cubeGrip._testGetHandFloor(), 180, "floor stays at pre-squeeze hold")
     })
 
@@ -261,6 +261,48 @@ function runTests(): void {
         assertEq(cubeGrip._testGetHandFloor(), 220, "initial floor from grab")
         for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
         assertEq(cubeGrip._testGetHandFloor(), 180, "floor follows the loosest hold")
+    })
+
+    test("hand floor: settled hold within margin reads 0 and floor catches up", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(140)
+        assertEq(cubeGrip._testGetHandFloor(), 140, "floor from loose moment")
+        for (let i = 0; i < 12; i++) cubeGrip._testFeedSample(180)
+        assertEq(cubeGrip._testGetStrength(), 0, "hold 40 above floor stays 0")
+        assertEq(cubeGrip._testGetHandFloor(), 156, "floor rises 8 per window toward the hold")
+    })
+
+    test("hand floor: upward follow stops at the hold median", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(140)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(143)
+        assertEq(cubeGrip._testGetHandFloor(), 143, "capped at median, not floor + step")
+    })
+
+    test("hand floor: upward follow does not eat a slow squeeze", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(140)
+        for (let w = 1; w <= 7; w++) {
+            for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(140 + 20 * w)
+        }
+        assert(cubeGrip._testGetStrength() >= 1, "20/窓の握り込みは8/窓の追従を振り切って1に届く")
+    })
+
+    test("hand floor: momentary loose moment does not turn a hold into phantom strength", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._setPickedUp(true)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(140)
+        assertEq(cubeGrip._testGetHandFloor(), 140, "floor ratcheted down by the loose moment")
+        for (let i = 0; i < 12; i++) cubeGrip._testFeedSample(180)
+        assertEq(cubeGrip._testGetStrength(), 0, "resumed hold reads 0, not 1")
     })
 
     test("hand floor: reset on each pickup", function () {
