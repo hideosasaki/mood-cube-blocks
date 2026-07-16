@@ -330,6 +330,46 @@ function runTests(): void {
         assertEq(cubePair._decodeRespValue(v), 9, "payload")
     })
 
+    test("beacon dedup: first packet is accepted", function () {
+        cubePair._testResetDedup()
+        assert(cubePair._acceptBeacon("ts", 3, 1000) === true, "first packet")
+    })
+
+    test("beacon dedup: same name+value within window is rejected", function () {
+        cubePair._testResetDedup()
+        cubePair._acceptBeacon("ts", 3, 1000)
+        assert(cubePair._acceptBeacon("ts", 3, 1050) === false, "50ms later")
+        assert(cubePair._acceptBeacon("ts", 3, 2199) === false, "just inside window")
+    })
+
+    test("beacon dedup: accepted again after the window", function () {
+        cubePair._testResetDedup()
+        cubePair._acceptBeacon("ts", 3, 1000)
+        assert(cubePair._acceptBeacon("ts", 3, 2500) === true, "past window")
+    })
+
+    test("beacon dedup: window is fixed, rejected repeats do not extend it", function () {
+        cubePair._testResetDedup()
+        cubePair._acceptBeacon("ts", 3, 1000)
+        assert(cubePair._acceptBeacon("ts", 3, 2400) === false, "repeat near end of window")
+        assert(cubePair._acceptBeacon("ts", 3, 2600) === true, "window measured from first accept")
+    })
+
+    test("beacon dedup: different value is accepted immediately", function () {
+        cubePair._testResetDedup()
+        cubePair._acceptBeacon("ts", 3, 1000)
+        assert(cubePair._acceptBeacon("ts", 5, 1050) === true, "new value")
+        assert(cubePair._acceptBeacon("ts", 5, 1100) === false, "then its repeats are rejected")
+    })
+
+    test("beacon dedup: names are tracked independently", function () {
+        cubePair._testResetDedup()
+        cubePair._acceptBeacon("ts", 1, 1000)
+        assert(cubePair._acceptBeacon("gm", 1, 1050) === true, "other name unaffected")
+        assert(cubePair._acceptBeacon("ts", 1, 1100) === false, "first name still deduped")
+        assert(cubePair._acceptBeacon("gm", 1, 1100) === false, "second name deduped too")
+    })
+
     test("motion: first reading establishes baseline, diff is zero", function () {
         cubePower._testResetMotion()
         assertEq(cubePower._accelDiff(100, 200, 1000), 0, "first reading never triggers")

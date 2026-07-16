@@ -37,8 +37,56 @@ namespace cubePair {
         })
     }
 
+    // 相手はスリープ中1秒周期wakeのlistenでしか聞いていないので、1周期を超える時間
+    // 連投することでクロック同期なしに必ず届く
+    const BEACON_DURATION_MS = 1200
+    const BEACON_INTERVAL_MS = 50
+
+    // 受信側の重複排除。ビーコンは同一イベントを BEACON_DURATION_MS 間連投するため、
+    // 同名+同値のパケットは最初の受理から DEDUP_WINDOW_MS の間は再受理しない。
+    // 窓は連投時間 + 電波の遅延余裕。受理時刻起点の固定窓 (再着で延長しない)
+    // なので、窓の内に始まった同値の新イベントもビーコン後半のパケットで受理される
+    const DEDUP_WINDOW_MS = BEACON_DURATION_MS + 300
+
+    let _dedupNames: string[] = []
+    let _dedupValues: number[] = []
+    let _dedupTimes: number[] = []
+
+    export function _acceptBeacon(name: string, value: number, now: number): boolean {
+        const idx = _dedupNames.indexOf(name)
+        if (idx < 0) {
+            _dedupNames.push(name)
+            _dedupValues.push(value)
+            _dedupTimes.push(now)
+            return true
+        }
+        if (_dedupValues[idx] === value && now - _dedupTimes[idx] < DEDUP_WINDOW_MS) {
+            return false
+        }
+        _dedupValues[idx] = value
+        _dedupTimes[idx] = now
+        return true
+    }
+
+    export function _testResetDedup(): void {
+        _dedupNames = []
+        _dedupValues = []
+        _dedupTimes = []
+    }
+
+    // 重複排除の対象は「クエリ/レスポンス以外すべて」。ビーコン連投されるメッセージを
+    // 列挙する形にすると、追加時の列挙漏れが多重発火として静かに再発する。除外側の
+    // 漏れ (新しいクエリが畳まれる) はテストで即座に気づけるので、こちらを既定にする
+    function isRequestResponse(name: string): boolean {
+        return name === cubeInternal.MSG_QUERY_SURFACE
+            || name === cubeInternal.MSG_QUERY_GRIP
+            || name === cubeInternal.MSG_RESP_SURFACE
+            || name === cubeInternal.MSG_RESP_GRIP
+    }
+
     function onPacket(name: string, value: number): void {
         if (cubeInternal.role === cubeInternal.ROLE_UNSET) return
+        if (!isRequestResponse(name) && !_acceptBeacon(name, value, input.runningTime())) return
         if (name === cubeInternal.MSG_TOUCH_SURFACE && cubeInternal.role === CubeRole.Grip) {
             cubeTouch._raiseRemoteSurface(value)
         } else if (name === cubeInternal.MSG_TOUCH_PIN && cubeInternal.role === CubeRole.Grip) {
@@ -112,11 +160,6 @@ namespace cubePair {
     export function requestStrength(): number {
         return request(CubeRole.Touch, cubeInternal.MSG_QUERY_GRIP)
     }
-
-    // 相手はスリープ中1秒周期wakeのlistenでしか聞いていないので、1周期を超える時間
-    // 連投することでクロック同期なしに必ず届く
-    const BEACON_DURATION_MS = 1200
-    const BEACON_INTERVAL_MS = 50
 
     function broadcastWithBeacon(name: string, value: number): void {
         ensureRadio()
