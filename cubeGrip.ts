@@ -36,6 +36,16 @@ namespace cubeGrip {
     // 在手ゼロ点。-1は未確立 (最初の窓が完了するまで強さ判定を凍結する。持ち上げた
     // 瞬間の掴み力をゼロ点や強さとして誤採用しないため)
     let _handFloor = -1
+    // 強さ変化イベントの最新値保証。DropIfBusy登録 (shared.ts) なのでハンドラ実行中の
+    // 変化イベントは捨てられる。中間値の合流は望む挙動だが、最後の変化まで落ちると
+    // アプリ層が古い強さのまま止まるので、ハンドラへ最後に渡した値 (_notified) と
+    // _strengthがずれている間はサンプル周期で再発火する。実行中の再発火はDropIfBusyが
+    // 捨てるので溜まらず、ハンドラが空いた次のtickで最新値だけが1回届く。
+    // ハンドラ完了駆動 (ラッパー末尾での再raise) にしない理由: 実行中の自己raiseは
+    // DropIfBusyが自分に捨てるので保証にならない。ポーリングはサンプラー駆動なので
+    // 再発火はローカル限定。ペア相手で受ける遠隔CHANGEDはこの保証の対象外 (requirements参照)
+    let _notified = 0
+    let _changeRegistered = false
 
     //% blockId=cubeGrip_strength block="strength"
     export function strength(): number {
@@ -67,9 +77,22 @@ namespace cubeGrip {
     //% blockId=cubeGrip_onChange block="on grip strength changed"
     //% draggableParameters="reporter"
     export function onChange(handler: (strength: number) => void): void {
+        _changeRegistered = true
         control.onEvent(cubeInternal.EVT_SRC_GRIP_CHANGED, 0, function () {
-            handler(control.eventValue())
+            const v = control.eventValue()
+            // 再発火とコミット時の即時発火が重なっても同値の二重配達はここで抑える
+            if (_deliverChange(v)) handler(v)
         }, cubeInternal.USER_HANDLER_FLAGS)
+    }
+
+    export function _deliverChange(v: number): boolean {
+        if (v === _notified) return false
+        _notified = v
+        return true
+    }
+
+    export function _redeliverPending(): boolean {
+        return _changeRegistered && _notified !== _strength
     }
 
     //% blockId=cubeGrip_onPickUp block="on picked up"
@@ -170,6 +193,9 @@ namespace cubeGrip {
 
     function processSample(raw: number): void {
         feedWindow(raw)
+        if (_redeliverPending()) {
+            control.raiseEvent(cubeInternal.EVT_SRC_GRIP_CHANGED, _strength)
+        }
         if (!_pickedUp || _handFloor < 0) return
         const target = _rawToStrength(raw)
         if (target === _strength) {
@@ -231,6 +257,7 @@ namespace cubeGrip {
         _rawZeroMax = RAW_ZERO_MAX_DEFAULT
         _pickedUp = true
         _trackLen = 0
+        _notified = 0
         // 在手ゼロ点=デフォルトbaselineの状態から始める (従来テストの前提を保つ)
         _handFloor = RAW_ZERO_MAX_DEFAULT - BASELINE_MARGIN
     }

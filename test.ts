@@ -113,6 +113,47 @@ function runTests(): void {
         assertEq(cubeGrip._testGetStableCount(), 0, "raw maps to 0 = current strength, counter reset")
     })
 
+    test("changed redelivery: committed change is pending until delivered", function () {
+        cubeGrip._testResetState()
+        cubeGrip.onChange(function (s: number) { })
+        assert(!cubeGrip._redeliverPending(), "no change yet")
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
+        assert(cubeGrip._redeliverPending(), "strength 1 committed but not delivered")
+        assert(cubeGrip._deliverChange(1), "first delivery passes")
+        assert(!cubeGrip._redeliverPending(), "resolved after delivery")
+        assert(!cubeGrip._deliverChange(1), "same value suppressed")
+    })
+
+    test("changed redelivery: round trip while busy coalesces away", function () {
+        cubeGrip._testResetState()
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._deliverChange(1)
+        cubeGrip._testFeedSample(175)
+        cubeGrip._testFeedSample(175)
+        assert(cubeGrip._redeliverPending(), "strength 2 pending while handler busy")
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
+        assert(!cubeGrip._redeliverPending(), "returned to delivered value, nothing to redeliver")
+    })
+
+    test("changed redelivery: putdown zero is redelivered too", function () {
+        cubeGrip._testResetState()
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._deliverChange(1)
+        cubeGrip._setPickedUp(false)
+        assertEq(cubeGrip._testGetStrength(), 0, "putdown forces strength 0")
+        assert(cubeGrip._redeliverPending(), "zero not yet delivered")
+        assert(cubeGrip._deliverChange(0), "zero delivery passes")
+        assert(!cubeGrip._redeliverPending(), "resolved")
+    })
+
     test("calibration: stable samples set baseline to median + margin", function () {
         cubeGrip._testResetState()
         cubeGrip._applyCalibration([100, 101, 102, 103, 104, 105])
