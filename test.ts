@@ -734,6 +734,25 @@ function runTests(): void {
         assert(cubePower._stepP0Level(true), "first sample active fires")
         assert(!cubePower._stepP0Level(true), "then sustained is quiet")
     })
+
+    test("strengthToDuty: 0は停止、1-9は維持下限348〜全開1023の線形", function () {
+        assertEq(cubeVibe._strengthToDuty(0), 0, "strength=0")
+        assertEq(cubeVibe._strengthToDuty(-1), 0, "negative clamps to 0")
+        assertEq(cubeVibe._strengthToDuty(1), 348, "strength=1 (sustain floor + margin)")
+        assertEq(cubeVibe._strengthToDuty(5), 685, "strength=5 (midpoint)")
+        assertEq(cubeVibe._strengthToDuty(9), 1023, "strength=9 (full)")
+        assertEq(cubeVibe._strengthToDuty(10), 1023, "over 9 clamps to full")
+    })
+
+    test("kickNeeded: 停止状態から起動しきい値未満で始動するときだけキック", function () {
+        assert(cubeVibe._kickNeeded(false, 348), "stopped -> weak needs kick")
+        assert(cubeVibe._kickNeeded(false, 599), "stopped -> just under threshold needs kick")
+        assert(!cubeVibe._kickNeeded(false, 601), "stopped -> strong starts on its own")
+        assert(!cubeVibe._kickNeeded(false, 1023), "stopped -> full starts on its own")
+        assert(!cubeVibe._kickNeeded(true, 432), "already running, no kick")
+        assert(!cubeVibe._kickNeeded(true, 348), "running -> weak, no kick")
+        assert(!cubeVibe._kickNeeded(false, 0), "stop -> stop, no kick")
+    })
 }
 
 serial.writeLine("=== mood-cube-blocks tests ===")

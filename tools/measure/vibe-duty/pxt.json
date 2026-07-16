@@ -1,0 +1,22 @@
+{
+    "name": "mood-cube-measure-vibe-duty",
+    "description": "振動モーターのしきい値実測と、cubeVibeの強さ0-9を体感確認するファーム",
+    "dependencies": {
+        "core": "*",
+        "mood-cube-blocks": "file:../../.."
+    },
+    "files": [
+        "main.ts"
+    ],
+    "targetVersions": {
+        "target": "8.0.22",
+        "targetId": "microbit"
+    },
+    "supportedTargets": [
+        "microbit"
+    ],
+    "preferredEditor": "tsprj",
+    "disablesVariants": [
+        "mbdal"
+    ]
+}
