@@ -43,7 +43,8 @@ namespace cubeGrip {
     // 捨てるので溜まらず、ハンドラが空いた次のtickで最新値だけが1回届く。
     // ハンドラ完了駆動 (ラッパー末尾での再raise) にしない理由: 実行中の自己raiseは
     // DropIfBusyが自分に捨てるので保証にならない。ポーリングはサンプラー駆動なので
-    // 再発火はローカル限定。ペア相手で受ける遠隔CHANGEDはこの保証の対象外 (requirements参照)
+    // 再発火はローカル限定。ペア相手 (触感キューブ) で受ける遠隔CHANGEDは再配達されず、
+    // ハンドラ実行中に届いた変化はそのまま落ちる (受容する既知の限界)
     let _notified = 0
     let _changeRegistered = false
 

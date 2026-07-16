@@ -25,6 +25,11 @@ namespace cubeTouch {
     let _cleanRun: number = 0
     let _stabCount: number = 0
     let _warmupBuf: number[] = []
+    // 上面変化イベントの最新値保証。方式と理由はcubeGrip.tsの_notifiedと同じ
+    // (DropIfBusyで最後の変化まで落ちると古い面のまま止まるため、未配達の間は
+    // サンプル周期で再発火する。遠隔で受ける側は対象外)
+    let _surfaceNotified: CubeFace = CubeFace.Face1
+    let _surfaceChangeRegistered = false
 
     //% blockId=cubeTouch_surface block="surface"
     export function surface(): number {
@@ -36,9 +41,21 @@ namespace cubeTouch {
     //% blockId=cubeTouch_onSurfaceChange block="on surface changed"
     //% draggableParameters="reporter"
     export function onSurfaceChange(handler: (face: number) => void): void {
+        _surfaceChangeRegistered = true
         control.onEvent(cubeInternal.EVT_SRC_SURFACE, 0, function () {
-            handler(control.eventValue())
+            const v = control.eventValue()
+            if (_deliverSurface(v)) handler(v)
         }, cubeInternal.USER_HANDLER_FLAGS)
+    }
+
+    export function _deliverSurface(face: number): boolean {
+        if (face === _surfaceNotified) return false
+        _surfaceNotified = face
+        return true
+    }
+
+    export function _surfaceRedeliverPending(): boolean {
+        return _surfaceChangeRegistered && _surfaceNotified !== _surface
     }
 
     //% blockId=cubeTouch_onPinStuck block="on pin stuck"
@@ -114,6 +131,9 @@ namespace cubeTouch {
     }
 
     function updateSurface(): void {
+        if (_surfaceRedeliverPending()) {
+            control.raiseEvent(cubeInternal.EVT_SRC_SURFACE, _surface)
+        }
         const candidate = _classifyAccel(input.acceleration(Dimension.X), input.acceleration(Dimension.Y), input.acceleration(Dimension.Z))
         if (candidate === 0) return
 
@@ -162,6 +182,10 @@ namespace cubeTouch {
         _cleanRun = 0
         _stabCount = 0
         _warmupBuf = []
+        _surface = CubeFace.Face1
+        _candidate = CubeFace.Face1
+        _candidateSince = 0
+        _surfaceNotified = CubeFace.Face1
     }
 
     export function _testStabCount(): number {

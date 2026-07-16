@@ -446,6 +446,27 @@ function runTests(): void {
         assert(cubeTouch._isTouchSample(0) === false, "no ref yet")
     })
 
+    test("surface redelivery: committed change is pending until delivered", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch.onSurfaceChange(function (f: number) { })
+        assert(!cubeTouch._surfaceRedeliverPending(), "no change yet")
+        cubeTouch._raiseRemoteSurface(3)
+        assert(cubeTouch._surfaceRedeliverPending(), "face 3 committed but not delivered")
+        assert(cubeTouch._deliverSurface(3), "first delivery passes")
+        assert(!cubeTouch._surfaceRedeliverPending(), "resolved after delivery")
+        assert(!cubeTouch._deliverSurface(3), "same face suppressed")
+    })
+
+    test("surface redelivery: round trip while busy coalesces away", function () {
+        cubeTouch._testResetTouch()
+        cubeTouch._raiseRemoteSurface(2)
+        cubeTouch._deliverSurface(2)
+        cubeTouch._raiseRemoteSurface(5)
+        assert(cubeTouch._surfaceRedeliverPending(), "face 5 pending while handler busy")
+        cubeTouch._raiseRemoteSurface(2)
+        assert(!cubeTouch._surfaceRedeliverPending(), "returned to delivered face, nothing to redeliver")
+    })
+
     test("grip wake check: press sample relative to baseline", function () {
         cubeGrip._testResetState()
         assert(cubeGrip._isPressSample(126) === true, "above default baseline 125")
