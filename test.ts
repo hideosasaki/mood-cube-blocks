@@ -40,7 +40,7 @@ function runTests(): void {
     })
 
     test("rawToStrength: at or above RAW_FULL returns 9", function () {
-        assertEq(cubeGrip._rawToStrength(900), 9, "raw=900")
+        assertEq(cubeGrip._rawToStrength(383), 9, "raw=383")
         assertEq(cubeGrip._rawToStrength(1023), 9, "raw=1023")
     })
 
@@ -49,11 +49,11 @@ function runTests(): void {
     })
 
     test("rawToStrength: midpoint maps to 5", function () {
-        assertEq(cubeGrip._rawToStrength(490), 5, "raw=490")
+        assertEq(cubeGrip._rawToStrength(232), 5, "raw=232")
     })
 
-    test("rawToStrength: raw=217 maps to 2", function () {
-        assertEq(cubeGrip._rawToStrength(217), 2, "raw=217")
+    test("rawToStrength: raw=150 maps to 2", function () {
+        assertEq(cubeGrip._rawToStrength(150), 2, "raw=150")
     })
 
     test("hysteresis: 0 to 1 takes 3 stable samples", function () {
@@ -72,9 +72,9 @@ function runTests(): void {
         cubeGrip._testFeedSample(81)
         cubeGrip._testFeedSample(81)
         assertEq(cubeGrip._testGetStrength(), 1, "setup: strength=1")
-        cubeGrip._testFeedSample(217)
+        cubeGrip._testFeedSample(150)
         assertEq(cubeGrip._testGetStrength(), 1, "after 1st rising sample")
-        cubeGrip._testFeedSample(217)
+        cubeGrip._testFeedSample(150)
         assertEq(cubeGrip._testGetStrength(), 2, "after 2nd rising sample (commit)")
     })
 
