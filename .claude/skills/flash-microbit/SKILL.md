@@ -19,15 +19,14 @@ pyocdはリポジトリ直下の `.venv` にある。なければ `python3 -m ve
 
 書き込むhexは必ず `built/mbcodal-binary.hex` (v2用CODALバイナリ)。`built/binary.hex` はユニバーサルhexでpyocdが「invalid record type」で読めない。
 
-```sh
-./.venv/bin/pyocd flash -t nrf52833 <path>/built/mbcodal-binary.hex
-```
-
-エラー0x67 (flash erase sector failure) が出たら全消去してから再試行する。
+この個体はセクタ消去がエラー0x67 (flash erase sector failure) で失敗する (2026-07-15確認、DAPLink 0255でも0258-beta3でも再現、3/3)。最初からmass eraseしてから書き込む。
 
 ```sh
 ./.venv/bin/pyocd erase -t nrf52833 --mass
+./.venv/bin/pyocd flash -t nrf52833 <path>/built/mbcodal-binary.hex
 ```
+
+注意: mass eraseはflashlogの記録領域も消す。flashlog計測の結果を `pyocd savemem` で読み出す前に次のファームを焼かない。
 
 ### 対象別のビルド
 
