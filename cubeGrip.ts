@@ -7,7 +7,6 @@ namespace cubeGrip {
     const RAW_ZERO_MAX_DEFAULT = 125
     const RAW_FULL = 349
     const BASELINE_SAMPLES = 6
-    const BASELINE_INTERVAL_MS = 50
     const BASELINE_MARGIN = 20
 
     let _strength: number = 0
@@ -15,6 +14,16 @@ namespace cubeGrip {
     let _rawZeroMax = RAW_ZERO_MAX_DEFAULT
     let _candidate: number = 0
     let _stableCount: number = 0
+    // 持ち上げ状態 (MOTION_PICKUP〜PUTDOWN間)。フォーム巻きの予圧は数時間で数十counts
+    // 締まる方向にドリフトする (docs/measurements/2026-07-16-rest-drift.json: 無圧が
+    // 半日で103→144)。置かれている間のrawは定義上すべて無握りなので、この間は強さ判定を
+    // 止めてbaselineを追従させる。起動直後は「置かれている」扱い。手の中で起動した場合も
+    // 最初の動きでPICKUPが出るまでの間だけ判定が眠る
+    let _pickedUp = false
+    // 追従用の固定バッファ。毎回の再確保を避けるため長さ6を使い回し、_trackLenが充填数。
+    // _applyCalibrationのソートで中身が壊れても次の充填で全上書きされるので問題ない
+    let _trackBuf: number[] = [0, 0, 0, 0, 0, 0]
+    let _trackLen = 0
 
     //% blockId=cubeGrip_strength block="strength"
     export function strength(): number {
@@ -67,28 +76,16 @@ namespace cubeGrip {
         startSampling()
         control.onEvent(cubeInternal.EVT_SRC_MOTION_PICKUP, 0, function () {
             if (cubeInternal.role !== CubeRole.Grip) return
+            _setPickedUp(true)
             control.raiseEvent(cubeInternal.EVT_SRC_GRIP_PICKUP, 0)
             cubePair._broadcastGripMotion(true)
         })
         control.onEvent(cubeInternal.EVT_SRC_MOTION_PUTDOWN, 0, function () {
             if (cubeInternal.role !== CubeRole.Grip) return
+            _setPickedUp(false)
             control.raiseEvent(cubeInternal.EVT_SRC_GRIP_PUTDOWN, 0)
             cubePair._broadcastGripMotion(false)
         })
-    }
-
-    // baseline較正はスリープ突入直前に行う (cubePowerから呼ばれる)。起動時は手に持っている
-    // 可能性が高いのに対し、スリープ直前は無操作が続いた後なので無握りがほぼ確実。ドリフトで
-    // 幽霊値 (無握りなのに強さ>=1) が出た個体も、放置されれば必ずスリープに到達して校正される。
-    // 最初のスリープまではデフォルト値で動く
-    export function _calibrate(): void {
-        if (cubeInternal.role !== CubeRole.Grip) return
-        const samples: number[] = []
-        for (let i = 0; i < BASELINE_SAMPLES; i++) {
-            samples.push(pins.analogReadPin(AnalogPin.P0))
-            basic.pause(BASELINE_INTERVAL_MS)
-        }
-        _applyCalibration(samples)
     }
 
     export function _applyCalibration(samples: number[]): void {
@@ -124,7 +121,37 @@ namespace cubeGrip {
         processSample(pins.analogReadPin(AnalogPin.P0))
     }
 
+    // 置き状態→持ち上げでは残っている判定途中の状態を捨てる。持ち上げ→置きでは
+    // 強さを即0に落とす (置く動作は物理的に握りの解放を伴う。幽霊値もここで消える)
+    export function _setPickedUp(picked: boolean): void {
+        if (_pickedUp === picked) return
+        _pickedUp = picked
+        _candidate = 0
+        _stableCount = 0
+        _trackLen = 0
+        if (!picked && _strength > 0) {
+            const prev = _strength
+            _strength = 0
+            emitTransitions(prev, 0)
+        }
+    }
+
+    // 置き状態のbaseline追従。6サンプル (300ms) ごとに較正を試みる。放置されれば
+    // 常時この追従が働くので、スリープ突入時の一括較正は持たない。無圧が200を超える
+    // まで締まった個体は追従が止まるが、そこまで来ると動作幅が残っていないので
+    // 巻き直しが必要
+    function trackBaseline(raw: number): void {
+        _trackBuf[_trackLen++] = raw
+        if (_trackLen < BASELINE_SAMPLES) return
+        _applyCalibration(_trackBuf)
+        _trackLen = 0
+    }
+
     function processSample(raw: number): void {
+        if (!_pickedUp) {
+            trackBaseline(raw)
+            return
+        }
         const target = _rawToStrength(raw)
         if (target === _strength) {
             _stableCount = 0
@@ -183,6 +210,8 @@ namespace cubeGrip {
         _candidate = 0
         _stableCount = 0
         _rawZeroMax = RAW_ZERO_MAX_DEFAULT
+        _pickedUp = true
+        _trackLen = 0
     }
 
     export function _testGetRawZeroMax(): number {

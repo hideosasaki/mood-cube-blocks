@@ -74,7 +74,6 @@ namespace cubePower {
     function enterSleep(): void {
         cubeLight.setColor(NeoPixelColors.Black)
         cubeVibe.stop()
-        cubeGrip._calibrate()
         led.enable(false)
         // スピーカーを切断しておくと、毎秒の周期wakeでCODALがオーディオPWMを
         // 再構築してもピンが再接続されず、突入・起床の各1回以外はポップ音が

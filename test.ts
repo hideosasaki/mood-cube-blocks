@@ -152,6 +152,75 @@ function runTests(): void {
         assertEq(cubeGrip._rawToStrength(150), 0, "phantom cleared")
     })
 
+    test("pickup gate: samples while put down do not change strength", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._testFeedSample(300)
+        cubeGrip._testFeedSample(300)
+        cubeGrip._testFeedSample(300)
+        cubeGrip._testFeedSample(300)
+        assertEq(cubeGrip._testGetStrength(), 0, "strength stays 0 while put down")
+    })
+
+    test("pickup gate: pickup re-enables strength processing", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._testFeedSample(300)
+        cubeGrip._setPickedUp(true)
+        cubeGrip._testFeedSample(300)
+        cubeGrip._testFeedSample(300)
+        cubeGrip._testFeedSample(300)
+        assertEq(cubeGrip._testGetStrength(), 7, "strength follows samples after pickup")
+    })
+
+    test("pickup gate: putdown clears active strength to 0", function () {
+        cubeGrip._testResetState()
+        cubeGrip._testFeedSample(300)
+        cubeGrip._testFeedSample(300)
+        cubeGrip._testFeedSample(300)
+        assertEq(cubeGrip._testGetStrength(), 7, "setup: strength=7")
+        cubeGrip._setPickedUp(false)
+        assertEq(cubeGrip._testGetStrength(), 0, "strength cleared on putdown")
+    })
+
+    test("putdown tracking: rest samples move baseline to median + margin", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._testFeedSample(139)
+        cubeGrip._testFeedSample(142)
+        cubeGrip._testFeedSample(144)
+        cubeGrip._testFeedSample(145)
+        cubeGrip._testFeedSample(148)
+        assertEq(cubeGrip._testGetRawZeroMax(), 125, "baseline unchanged before buffer fills")
+        cubeGrip._testFeedSample(149)
+        assertEq(cubeGrip._testGetRawZeroMax(), 165, "median (偶数個は上側) 145 + margin 20 after 6 samples")
+    })
+
+    test("putdown tracking: buffer discarded on pickup", function () {
+        cubeGrip._testResetState()
+        cubeGrip._setPickedUp(false)
+        cubeGrip._testFeedSample(100)
+        cubeGrip._testFeedSample(101)
+        cubeGrip._testFeedSample(102)
+        cubeGrip._setPickedUp(true)
+        cubeGrip._setPickedUp(false)
+        cubeGrip._testFeedSample(103)
+        cubeGrip._testFeedSample(104)
+        cubeGrip._testFeedSample(105)
+        assertEq(cubeGrip._testGetRawZeroMax(), 125, "3 samples after re-putdown, buffer not full")
+    })
+
+    test("putdown tracking: not active while picked up", function () {
+        cubeGrip._testResetState()
+        cubeGrip._testFeedSample(100)
+        cubeGrip._testFeedSample(100)
+        cubeGrip._testFeedSample(100)
+        cubeGrip._testFeedSample(100)
+        cubeGrip._testFeedSample(100)
+        cubeGrip._testFeedSample(100)
+        assertEq(cubeGrip._testGetRawZeroMax(), 125, "baseline untouched while picked up")
+    })
+
     test("touch ref: seeded with warmup median at last warmup sample", function () {
         cubeTouch._testResetTouch()
         for (let i = 0; i < cubeTouch.TOUCH_WARMUP_SAMPLES - 1; i++) {
