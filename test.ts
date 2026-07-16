@@ -36,53 +36,53 @@ function armTouch(): void {
 function runTests(): void {
     test("rawToStrength: at or below baseline returns 0", function () {
         assertEq(cubeGrip._rawToStrength(0), 0, "raw=0")
-        assertEq(cubeGrip._rawToStrength(80), 0, "raw=80 (= baseline)")
+        assertEq(cubeGrip._rawToStrength(125), 0, "raw=125 (= baseline)")
     })
 
     test("rawToStrength: at or above RAW_FULL returns 9", function () {
-        assertEq(cubeGrip._rawToStrength(383), 9, "raw=383")
+        assertEq(cubeGrip._rawToStrength(349), 9, "raw=349")
         assertEq(cubeGrip._rawToStrength(1023), 9, "raw=1023")
     })
 
     test("rawToStrength: just above baseline clamped to 1", function () {
-        assertEq(cubeGrip._rawToStrength(81), 1, "raw=81")
+        assertEq(cubeGrip._rawToStrength(126), 1, "raw=126")
     })
 
     test("rawToStrength: midpoint maps to 5", function () {
-        assertEq(cubeGrip._rawToStrength(232), 5, "raw=232")
+        assertEq(cubeGrip._rawToStrength(237), 5, "raw=237")
     })
 
-    test("rawToStrength: raw=150 maps to 2", function () {
-        assertEq(cubeGrip._rawToStrength(150), 2, "raw=150")
+    test("rawToStrength: raw=175 maps to 2", function () {
+        assertEq(cubeGrip._rawToStrength(175), 2, "raw=175")
     })
 
     test("hysteresis: 0 to 1 takes 3 stable samples", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(81)
+        cubeGrip._testFeedSample(126)
         assertEq(cubeGrip._testGetStrength(), 0, "after 1st sample")
-        cubeGrip._testFeedSample(81)
+        cubeGrip._testFeedSample(126)
         assertEq(cubeGrip._testGetStrength(), 0, "after 2nd sample")
-        cubeGrip._testFeedSample(81)
+        cubeGrip._testFeedSample(126)
         assertEq(cubeGrip._testGetStrength(), 1, "after 3rd sample (commit)")
     })
 
     test("hysteresis: 1 to 2 takes 2 stable samples", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(81)
-        cubeGrip._testFeedSample(81)
-        cubeGrip._testFeedSample(81)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
         assertEq(cubeGrip._testGetStrength(), 1, "setup: strength=1")
-        cubeGrip._testFeedSample(150)
+        cubeGrip._testFeedSample(175)
         assertEq(cubeGrip._testGetStrength(), 1, "after 1st rising sample")
-        cubeGrip._testFeedSample(150)
+        cubeGrip._testFeedSample(175)
         assertEq(cubeGrip._testGetStrength(), 2, "after 2nd rising sample (commit)")
     })
 
     test("hysteresis: 1 to 0 takes 4 stable samples (falling + crosses zero)", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(81)
-        cubeGrip._testFeedSample(81)
-        cubeGrip._testFeedSample(81)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
         assertEq(cubeGrip._testGetStrength(), 1, "setup: strength=1")
         cubeGrip._testFeedSample(50)
         assertEq(cubeGrip._testGetStrength(), 1, "after 1st falling")
@@ -96,9 +96,9 @@ function runTests(): void {
 
     test("hysteresis: candidate change resets stable counter", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(81)
-        cubeGrip._testFeedSample(217)
-        cubeGrip._testFeedSample(81)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(175)
+        cubeGrip._testFeedSample(126)
         assertEq(cubeGrip._testGetCandidate(), 1, "candidate after flicker")
         assertEq(cubeGrip._testGetStableCount(), 1, "stable count reset")
         assertEq(cubeGrip._testGetStrength(), 0, "strength unchanged")
@@ -106,8 +106,8 @@ function runTests(): void {
 
     test("hysteresis: same-as-current sample clears candidate counter", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(81)
-        cubeGrip._testFeedSample(81)
+        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(126)
         assertEq(cubeGrip._testGetStableCount(), 2, "ramping up")
         cubeGrip._testFeedSample(50)
         assertEq(cubeGrip._testGetStableCount(), 0, "raw maps to 0 = current strength, counter reset")
@@ -147,9 +147,9 @@ function runTests(): void {
 
     test("calibration: raised baseline clears phantom strength", function () {
         cubeGrip._testResetState()
-        assertEq(cubeGrip._rawToStrength(110), 1, "phantom strength before calibration")
-        cubeGrip._applyCalibration([110, 110, 110, 110, 110, 110])
-        assertEq(cubeGrip._rawToStrength(110), 0, "phantom cleared")
+        assertEq(cubeGrip._rawToStrength(150), 1, "phantom strength before calibration")
+        cubeGrip._applyCalibration([150, 150, 150, 150, 150, 150])
+        assertEq(cubeGrip._rawToStrength(150), 0, "phantom cleared")
     })
 
     test("touch ref: seeded with warmup median at last warmup sample", function () {
@@ -279,8 +279,8 @@ function runTests(): void {
 
     test("grip wake check: press sample relative to baseline", function () {
         cubeGrip._testResetState()
-        assert(cubeGrip._isPressSample(81) === true, "above default baseline 80")
-        assert(cubeGrip._isPressSample(80) === false, "at baseline")
+        assert(cubeGrip._isPressSample(126) === true, "above default baseline 125")
+        assert(cubeGrip._isPressSample(125) === false, "at baseline")
     })
 
     test("classifyAccel: norm below min returns 0", function () {

@@ -1,10 +1,11 @@
 //% color="#E63946" weight=209 icon="\uf255" block="キューブ握り"
 namespace cubeGrip {
-    const RAW_ZERO_MAX_DEFAULT = 80
-    // 本番筐体 (LCX-300 3面巻き+1MΩ分圧) の大人全力握りp5。実測は
-    // docs/measurements/2026-07-16-assembled.json (無圧65/全力p5=383)。
-    // 使用者 (子供) の全力実測後に見直す
-    const RAW_FULL = 383
+    // 最終組み立て (LCX-300 3面巻き+布仕上げ+1MΩ分圧) の実測から決定。
+    // docs/measurements/2026-07-16-assembled.json の rest-loosened (無圧103) /
+    // max-loosened (全力p5=349)。デフォルトbaselineは無圧+マージン20相当。
+    // 使用者 (子供) の全力実測後にRAW_FULLを見直す
+    const RAW_ZERO_MAX_DEFAULT = 125
+    const RAW_FULL = 349
     const BASELINE_SAMPLES = 6
     const BASELINE_INTERVAL_MS = 50
     const BASELINE_MARGIN = 20
