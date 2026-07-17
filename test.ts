@@ -823,20 +823,35 @@ function runTests(): void {
         assertEq(cubePower._feedMotionSample(30, 7080), cubePower.MOTION_EVT_PUTDOWN, "putdown fires; a leaked spike would have reset the timer")
     })
 
-    test("stepP0Level: 非アクティブ→アクティブの遷移だけが活動になる", function () {
+    test("stepP0Wake: 覚醒中はエッジでもタイマーを触らない (境界ノイズのエイリアスが覚醒を維持しない)", function () {
         cubePower._testResetP0Level()
-        assert(!cubePower._stepP0Level(false), "clean stays inactive")
-        assert(cubePower._stepP0Level(true), "rise counts as activity")
-        assert(!cubePower._stepP0Level(true), "sustained level does not count")
-        assert(!cubePower._stepP0Level(true), "still sustained")
-        assert(!cubePower._stepP0Level(false), "fall does not count")
-        assert(cubePower._stepP0Level(true), "re-rise counts again")
+        assert(!cubePower._stepP0Wake(false, false), "awake clean stays quiet")
+        assert(!cubePower._stepP0Wake(false, true), "awake rise is quiet")
+        assert(!cubePower._stepP0Wake(false, false), "awake fall is quiet")
+        assert(!cubePower._stepP0Wake(false, true), "awake re-rise is still quiet")
     })
 
-    test("stepP0Level: 初回サンプルがアクティブなら活動になる (スリープ中の刺しを1秒で拾う)", function () {
+    test("stepP0Wake: スリープ中は非アクティブ→アクティブの遷移だけで起床する", function () {
         cubePower._testResetP0Level()
-        assert(cubePower._stepP0Level(true), "first sample active fires")
-        assert(!cubePower._stepP0Level(true), "then sustained is quiet")
+        assert(!cubePower._stepP0Wake(true, false), "sleeping clean stays quiet")
+        assert(cubePower._stepP0Wake(true, true), "sleeping rise wakes")
+        assert(!cubePower._stepP0Wake(true, true), "sustained level does not wake again")
+        assert(!cubePower._stepP0Wake(true, false), "fall does not wake")
+        assert(cubePower._stepP0Wake(true, true), "re-rise wakes again")
+    })
+
+    test("stepP0Wake: 覚醒中もレベルを追跡し、刺したまま突入したスリープを即起床させない", function () {
+        cubePower._testResetP0Level()
+        assert(!cubePower._stepP0Wake(false, true), "awake with pin stuck is quiet")
+        assert(!cubePower._stepP0Wake(true, true), "sleep entered with pin stuck stays asleep")
+        assert(!cubePower._stepP0Wake(true, false), "pin removed, still asleep")
+        assert(cubePower._stepP0Wake(true, true), "re-stick wakes")
+    })
+
+    test("stepP0Wake: 初回サンプルがアクティブなら起床する (スリープ中の刺しを1秒で拾う)", function () {
+        cubePower._testResetP0Level()
+        assert(cubePower._stepP0Wake(true, true), "first sample active wakes")
+        assert(!cubePower._stepP0Wake(true, true), "then sustained is quiet")
     })
 
     test("strengthToDuty: 0は停止、1-9は維持下限348〜全開1023の線形", function () {

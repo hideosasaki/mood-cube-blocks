@@ -109,25 +109,30 @@ namespace cubePower {
             _markActive(input.runningTime())
         }
         if (cubeInternal.role === CubeRole.Touch) {
-            if (_stepP0Level(cubeTouch._isTouchSample(pins.analogReadPin(AnalogPin.P0)))) {
+            if (_stepP0Wake(_sleeping, cubeTouch._isTouchSample(pins.analogReadPin(AnalogPin.P0)))) {
                 _markActive(input.runningTime())
             }
         } else if (cubeInternal.role === CubeRole.Grip) {
-            if (_stepP0Level(cubeGrip._isPressSample(pins.analogReadPin(AnalogPin.P0)))) {
+            if (_stepP0Wake(_sleeping, cubeGrip._isPressSample(pins.analogReadPin(AnalogPin.P0)))) {
                 _markActive(input.runningTime())
             }
         }
     }
 
-    // P0レベル判定 (触感: タッチ、握り: 圧力) は非アクティブ→アクティブの遷移だけを
-    // 活動と見なす。レベルの継続でタイマーをリセットすると、フォークの置き接触や
-    // P0の持続的下振れのような「イベントを発火しない状態」が永久にスリープを妨げる
-    // (要件は「公開入力イベントが発火していないときにスリープ」)。遷移方式なら
-    // スリープ中の刺し・握りは従来どおり最大1秒の周期wakeで拾える
-    export function _stepP0Level(active: boolean): boolean {
+    // P0レベル判定 (触感: タッチ、握り: 圧力) がタイマーを触るのはスリープ中の起床
+    // 判定だけ。覚醒中のタッチ・握りによる覚醒維持は各センサーループがイベント発火時に
+    // _markActiveを呼ぶ形で担っており、ここで重ねて判定する必要がない。むしろこの1Hz
+    // 判定には再アーム衛生 (触感20Hz側のクリーン6連続のような) がなく、P0がしきい値
+    // 境界をまたいで揺れるとエイリアスで立ち上がりエッジを繰り返し拾い、画面に何も
+    // 出ないままスリープを永久に妨げていた (2026-07-17実機で確認)。
+    // 覚醒中もレベルの追跡だけは続ける。追跡を止めると、刺したまま・握ったまま突入した
+    // スリープを直後の周期wakeが偽の立ち上がりと誤認して即再起床してしまう。
+    // スリープ中は遷移だけで起床するので、刺したまま・握ったまま放置しても眠り続け、
+    // 抜いて刺し直す・握り直すことで最大1秒で起きる (要件どおり)
+    export function _stepP0Wake(sleeping: boolean, active: boolean): boolean {
         const rose = active && !_p0LevelActive
         _p0LevelActive = active
-        return rose
+        return sleeping && rose
     }
 
     export function _testResetP0Level(): void {
