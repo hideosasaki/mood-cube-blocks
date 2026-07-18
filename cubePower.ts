@@ -12,9 +12,17 @@ namespace cubePower {
     // 根拠: docs/measurements/2026-07-11-motion-fast.json
     const STILL_THRESHOLD = 60
     const PUTDOWN_STILL_MS = 4000
-    // 誤起床の再スリープ判定前に、PICKUP確定に要するトリガー窓+確認窓が
-    // 完走できる観測時間を与える
-    const WAKE_SETTLE_MS = ACTIVE_SAMPLE_MS * MOTION_WINDOW_TICKS * 2 + 50
+    // 机に物を置いた衝撃は残響 (>=STILL) がトリガー窓の後2窓まで続く
+    // (2026-07-19実測、握りキューブ筐体込み: docs/measurements/2026-07-19-motion-shock.csv)。
+    // 確認3窓を要求すると観測された全衝撃を棄却でき、通常の持ち上げは動きが
+    // 1.7秒以上続くので全サイクル発火する。発火はトリガーから400ms後
+    const PICKUP_CONFIRM_WINDOWS = 3
+    const MOTION_WINDOW_MS = ACTIVE_SAMPLE_MS * MOTION_WINDOW_TICKS
+    // 誤起床の再スリープ判定前に、トリガー窓が完走できる観測時間を与える。
+    // 2窓分なのは起床が窓の途中に落ちるため (書きかけの窓1つ+完全なトリガー窓1つ)。
+    // 確認窓の完走はトリガーを観測した起床に限りenterSleepが観測を延長して賄う
+    // (固定で延ばすとスリープ中の覚醒割合が毎秒25%→45%に増えるため)
+    const WAKE_SETTLE_MS = MOTION_WINDOW_MS * 2 + 50
     export const IDLE_TIMEOUT_MS = 180000
 
     export const MOTION_EVT_NONE = 0
@@ -30,6 +38,7 @@ namespace cubePower {
     let _accelInitialized = false
     let _isMoving = false
     let _pickupArmed = false
+    let _pickupConfirms = 0
     let _stillBegan = 0
     let _windowMax = 0
     let _windowTick = 0
@@ -81,14 +90,19 @@ namespace cubePower {
         music.setBuiltInSpeakerEnabled(false)
         _sleeping = true
         while (_shouldEnterSleep(input.runningTime())) {
-            // スリープをまたいでarm状態が残ると、起床後の最初の窓だけでPICKUPが
-            // 確定してしまい衝撃フィルタが効かない
-            _pickupArmed = false
+            // スリープをまたいでarm状態が残ると、起床後の確認窓が水増しされて
+            // 衝撃フィルタが効かない
+            _disarmPickup()
             power.lowPowerRequest(LowPowerMode.Wait)
             if (input.buttonIsPressed(Button.A) || input.buttonIsPressed(Button.B)) {
                 _markActive(input.runningTime())
             } else {
                 basic.pause(WAKE_SETTLE_MS)
+                // トリガーを観測した起床だけ、PICKUP確定/棄却が決まるまで観測を
+                // 延長する。armは確認3窓以内に必ず解消するので有限で終わる
+                while (_isPickupPending()) {
+                    basic.pause(MOTION_WINDOW_MS)
+                }
             }
         }
         _sleeping = false
@@ -160,6 +174,16 @@ namespace cubePower {
         _lastActiveAt = now
     }
 
+    export function _isPickupPending(): boolean {
+        return _pickupArmed
+    }
+
+    // arm/確認カウンタは常にペアで解消する (確認カウンタはarm中だけ意味を持つ)
+    function _disarmPickup(): void {
+        _pickupArmed = false
+        _pickupConfirms = 0
+    }
+
     export function _isIdle(now: number, timeoutMs: number): boolean {
         return now - _lastActiveAt >= timeoutMs
     }
@@ -213,23 +237,29 @@ namespace cubePower {
         return evt
     }
 
-    // 机への衝撃 (ものを置く等) は1窓のスパイクで終わり、実際の持ち上げは動きが
-    // 数窓続く (実測: docs/measurements/2026-07-13-motion-events.csv)。大差分の
-    // 窓だけではPICKUPを発火せず、次の窓でも動きが続いたときだけ発火する
+    // 机への衝撃 (ものを置く等) は残響込みでもトリガー後2窓 (200ms) で収まり、
+    // 実際の持ち上げは動きが秒単位で続く (実測: docs/measurements/
+    // 2026-07-19-motion-shock.csv)。大差分の窓ではPICKUPを発火せず、
+    // そのあと動き (>=STILL) がPICKUP_CONFIRM_WINDOWS窓続いたときだけ発火する
     export function _stepMotion(diff: number, now: number): number {
         if (diff >= STILL_THRESHOLD) {
             _stillBegan = 0
             if (!_isMoving) {
                 if (_pickupArmed) {
-                    _pickupArmed = false
-                    _isMoving = true
-                    return MOTION_EVT_PICKUP
+                    _pickupConfirms++
+                    if (_pickupConfirms >= PICKUP_CONFIRM_WINDOWS) {
+                        _disarmPickup()
+                        _isMoving = true
+                        return MOTION_EVT_PICKUP
+                    }
+                } else if (diff > MOTION_THRESHOLD) {
+                    _pickupArmed = true
+                    _pickupConfirms = 0
                 }
-                _pickupArmed = diff > MOTION_THRESHOLD
             }
             return MOTION_EVT_NONE
         }
-        _pickupArmed = false
+        _disarmPickup()
         if (!_isMoving) return MOTION_EVT_NONE
         if (_stillBegan === 0) {
             _stillBegan = now
@@ -252,7 +282,7 @@ namespace cubePower {
 
     export function _testResetMotionState(): void {
         _isMoving = false
-        _pickupArmed = false
+        _disarmPickup()
         _stillBegan = 0
         _windowMax = 0
         _windowTick = 0

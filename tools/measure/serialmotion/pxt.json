@@ -1,0 +1,21 @@
+{
+    "name": "mood-cube-measure-serialmotion",
+    "description": "モーション窓最大値をシリアルへリアルタイム送信する計測ファーム (筐体内・ボタン不要の自動シーケンス)",
+    "dependencies": {
+        "core": "*"
+    },
+    "files": [
+        "main.ts"
+    ],
+    "targetVersions": {
+        "target": "8.0.22",
+        "targetId": "microbit"
+    },
+    "supportedTargets": [
+        "microbit"
+    ],
+    "preferredEditor": "tsprj",
+    "disablesVariants": [
+        "mbdal"
+    ]
+}
