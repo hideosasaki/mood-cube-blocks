@@ -80,6 +80,9 @@ flowchart TB
 
 子供がblocksエディタで組む体験ロジック。起動時に`cubePair`で自分の役 (触感/握り) を宣言する。入力イベントと出力ブロックの結びつけ、モード切替、発光・振動パターンの時間制御をここで書く。
 
+- https://github.com/hideosasaki/mood-cube-touch
+- https://github.com/hideosasaki/mood-cube-grip
+
 ### mood-cube-blocks (本拡張)
 
 ハードウェア抽象層。5つのnamespaceで入出力をブロック化する。pxt-neopixelやmicro:bitランタイムAPIをアプリ層から隠蔽する。
