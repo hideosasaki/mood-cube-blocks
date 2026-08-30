@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mood cube - a pair of fidget cubes</title>
+<meta name="description" content="How mood cube works: two micro:bit v2 fidget cubes, one you poke and one you squeeze, linked over radio.">
+<link rel="stylesheet" href="page.css">
+</head>
+<body>
+
+<h1>Mood Cube</h1>
+<p class="sub">Texture and release. Two fidget boxes that work as a pair, each running a micro:bit v2, linked over radio.</p>
+<figure class="hero">
+  <img src="photo_cubes.jpg" alt="Busubusu Cube and Niginigi Cylinder side by side">
+</figure>
+<p class="lang"><a href="index.html">日本語</a></p>
+
+<h2>What it is</h2>
+<p>Mood Cube is a fidget toy for settling your mood with your hands. The two boxes have opposite personalities, and touching one makes the other react.</p>
+<p>Busubusu Cube, the one you poke, is a 7cm clear plastic box. Five of its faces carry a different material each, and you poke them with a fork to feel what's underneath. Calm, receptive play.</p>
+<p>Niginigi Cylinder, the one you squeeze, is a 7cm fabric-covered tube with a pressure sensor inside, soft like a beanbag. Light and vibration follow how hard you squeeze. Active play, for letting force out.</p>
+<p>You can see them working in <a href="https://youtu.be/yR2FC-KThe8?si=Y-wBd0DDIr2bDifT">this video</a>.</p>
+<p>The behaviour of each box is programmed by an elementary school kid using MakeCode blocks.</p>
+
+<h2>The contact sensor</h2>
+<p>Busubusu Cube detects the instant a fork touches a face. It does that by making your body part of the circuit.</p>
+
+<figure>
+  <svg viewBox="0 0 300 250" role="img" aria-label="Voltage divider formed by a pull-up resistor and the human body">
+    <g fill="none" stroke="#1f1c19" stroke-width="1.5">
+      <line x1="150" y1="24" x2="150" y2="52"/>
+      <rect x="136" y="52" width="28" height="40" rx="2" fill="#fdfcfa"/>
+      <line x1="150" y1="92" x2="150" y2="148"/>
+      <rect x="74" y="148" width="152" height="56" rx="4" fill="#fdfcfa"/>
+      <line x1="150" y1="204" x2="150" y2="224"/>
+      <line x1="132" y1="224" x2="168" y2="224"/>
+      <line x1="138" y1="230" x2="162" y2="230"/>
+      <line x1="144" y1="236" x2="156" y2="236"/>
+    </g>
+    <circle cx="150" cy="120" r="4" fill="#1f1c19"/>
+    <g font-size="12" fill="#1f1c19" font-family="sans-serif">
+      <text x="150" y="16" text-anchor="middle">3V</text>
+      <text x="174" y="70">pull-up,</text>
+      <text x="174" y="86">a few hundred kΩ</text>
+      <text x="140" y="118" text-anchor="end">P0</text>
+      <text x="140" y="134" text-anchor="end" fill="#6b645c">analog in</text>
+      <text x="150" y="172" text-anchor="middle" font-size="11.5">conductive mesh, 5 faces</text>
+      <text x="150" y="192" text-anchor="middle" font-size="11">fork → hand → bolt tied to GND</text>
+    </g>
+  </svg>
+  <figcaption>Untouched, P0 sits near 3V. Touch it and your body becomes the lower leg of the divider, pulling the voltage down.</figcaption>
+</figure>
+
+<figure>
+  <img src="photo_mesh.jpg" alt="the cube during assembly, faces lined with aluminium mesh">
+  <figcaption>Busubusu Cube during assembly. The aluminium mesh on each face is the conductive layer, and all five faces meet at one wire inside.</figcaption>
+</figure>
+
+<p>Metal bolts hold the texture materials to the outside of Busubusu Cube, and those bolts are wired to ground. They sit where your fingers naturally land. Poke a face with the fork and you complete a path from the bolt, through your body, through the fork, into the conductive mesh. P0 drops, and the software watches for that drop.</p>
+<figure>
+  <img src="photo_inside.jpg" alt="the cube opened up">
+  <figcaption>Opened up. Mesh on the inside of each face, texture material on the outside, and the wiring gathered inside on its way to P0.</figcaption>
+</figure>
+
+<p>Only five faces carry mesh. The one with the A and B buttons is left clear so the buttons still work. Those five are wired together into one signal, so electrically there's no way to tell them apart. Instead, at the moment of contact the built-in accelerometer decides which face is pointing up, and that face travels along with the "poked" event. Making "poke the face on top" the rule of the game is what lets one wire do the work of five. The accelerometer tells all six faces apart, so it also knows when the bare button face is on top.</p>
+
+<details>
+  <summary>More on the detection code</summary>
+  <ul>
+    <li>P0 is sampled every 50ms, 20 times a second</li>
+    <li>A running average acts as the reference; any sample more than 50 counts below it counts as a poke</li>
+    <li>The reference drifts on its own, so board-to-board variation and temperature need no calibration step</li>
+    <li>After firing, the next detection is blocked until six clean samples in a row. That stops a fork left in place from firing repeatedly</li>
+    <li>The first nine samples after power-up are used only to seed the reference with their median</li>
+  </ul>
+  <p>We don't use the capacitive touch built into micro:bit v2. It assumes a small electrode, and measurements showed it doesn't respond to five large meshes wired in parallel.</p>
+</details>
+
+<h2>The pressure sensor</h2>
+<p>Niginigi Cylinder reads grip strength on a scale of 0 to 9. The sensing element is LCX-300, the black conductive foam used to protect ICs, sandwiched between metal foil electrodes. Press it and the foam compresses, conducts better, and its resistance falls.</p>
+
+<figure>
+  <img src="photo_sensor.jpg" alt="conductive foam with metal foil electrodes">
+  <figcaption>Inside the pressure sensor. The black strip is LCX-300 foam, with metal foil electrodes at the end to take the wires out.</figcaption>
+</figure>
+
+<figure>
+  <img src="photo_sensor_wrap.jpg" alt="the sensor wrapped around the cylinder">
+  <figcaption>Wrapped around the body of the cylinder.</figcaption>
+</figure>
+
+<figure>
+  <svg viewBox="0 0 300 230" role="img" aria-label="Voltage divider formed by conductive foam and a fixed resistor">
+    <g fill="none" stroke="#1f1c19" stroke-width="1.5">
+      <line x1="150" y1="24" x2="150" y2="50"/>
+      <rect x="128" y="50" width="44" height="44" rx="2" fill="#fdfcfa"/>
+      <line x1="150" y1="94" x2="150" y2="146"/>
+      <rect x="136" y="146" width="28" height="40" rx="2" fill="#fdfcfa"/>
+      <line x1="150" y1="186" x2="150" y2="202"/>
+      <line x1="132" y1="202" x2="168" y2="202"/>
+      <line x1="138" y1="208" x2="162" y2="208"/>
+      <line x1="144" y1="214" x2="156" y2="214"/>
+    </g>
+    <circle cx="150" cy="120" r="4" fill="#1f1c19"/>
+    <g font-size="12" fill="#1f1c19" font-family="sans-serif">
+      <text x="150" y="16" text-anchor="middle">3V</text>
+      <text x="182" y="68">LCX-300</text>
+      <text x="182" y="84" font-size="11" fill="#6b645c">resistance falls</text>
+      <text x="182" y="98" font-size="11" fill="#6b645c">when squeezed</text>
+      <text x="140" y="118" text-anchor="end">P0</text>
+      <text x="140" y="134" text-anchor="end" fill="#6b645c">analog in</text>
+      <text x="174" y="166">1MΩ</text>
+      <text x="174" y="182">fixed resistor</text>
+    </g>
+  </svg>
+  <figcaption>The harder you squeeze, the smaller the upper resistance and the higher P0 goes. The divider runs the opposite way round from the contact sensor.</figcaption>
+</figure>
+
+<p>The midpoint of that divider does not go straight into the analog input. When the source resistance is high, the analog-to-digital converter inside micro:bit cannot gather enough charge to sample it, and the reading wanders. So an op-amp that runs at 3V (NJU7043D) sits between the midpoint and P0, passing the voltage through at the same level but with the strength to drive the input. A voltage follower, the plainest use there is.</p>
+
+<p>The hard part was reading zero when nobody is squeezing. Conductive foam is not a well-behaved part. Sew it into fabric and the wrapping alone keeps it slightly compressed. Worse, that compression keeps creeping: leave the cube alone for half a day and the unsqueezed reading has visibly moved. On top of that, simply holding the cube without squeezing puts pressure on it from your fingers. One fixed threshold gives you a phantom strength of 1 or 2 that never goes away.</p>
+<p>So we layered three mechanisms. While the cube sits on the table, every reading is by definition unsqueezed, so it quietly recalibrates its zero, and left alone it fixes itself. The accelerometer then decides when the cube is picked up and put down, and strength is only judged in between; on the table, strength is always 0. Finally, once picked up, the lowest reading seen so far becomes the zero for that particular grip, because the pre-load differs by person and by how they hold it.</p>
+
+<details>
+  <summary>More on how the numbers were chosen</summary>
+  <ul>
+    <li>The analog pin is read every 50ms and processed in windows of six samples (300ms)</li>
+    <li>A margin of 80 counts sits on top of the zero before quantising to 0-9. That margin came from replaying 26 seconds of recorded data of someone holding the cube without squeezing</li>
+    <li>Going up requires the same value twice, coming down three times, with one extra step when crossing 0 or 9. Noise alone can't make the number jump</li>
+    <li>The top of the scale is set from a measured full-strength squeeze</li>
+  </ul>
+</details>
+
+<h2>Linking the cubes over radio</h2>
+<p>Busubusu Cube and Niginigi Cylinder are independent machines, each with its own micro:bit. They talk over the 2.4GHz radio built into micro:bit, so that what happens to one can drive the other.</p>
+<p>To save battery, a cube falls into deep sleep after three minutes of nothing happening. While asleep the radio is off; once a second it wakes for a fraction of a moment, checks motion, the sensor and the radio, and goes back to sleep.</p>
+<p>You never know when the other cube will be listening, so sending an event once won't do. Whichever cube something happened to repeats the same message every 50ms for 1.2 seconds. Since that's longer than the one-second listening cycle, it always overlaps at least once, with no clock synchronisation. The receiving side collapses the repeats so the event fires only once.</p>
+
+<figure>
+  <svg viewBox="0 0 300 130" role="img" aria-label="A repeated beacon overlapping the one-second wake windows">
+    <line x1="10" y1="86" x2="290" y2="86" stroke="#1f1c19" stroke-width="1.5"/>
+    <g fill="#1f1c19">
+      <rect x="24" y="76" width="8" height="20"/>
+      <rect x="89" y="76" width="8" height="20"/>
+      <rect x="154" y="76" width="8" height="20"/>
+      <rect x="219" y="76" width="8" height="20"/>
+      <rect x="284" y="76" width="8" height="20"/>
+    </g>
+    <rect x="52" y="46" width="78" height="12" rx="2" fill="#1f1c19" opacity="0.35"/>
+    <g font-size="11.5" fill="#6b645c" font-family="sans-serif">
+      <text x="10" y="36">sender: repeats the event for 1.2 seconds</text>
+      <text x="10" y="122">sleeper: listens for an instant, once a second</text>
+    </g>
+  </svg>
+  <figcaption>Even a sleeping box hears it within a second.</figcaption>
+</figure>
+
+<p>Current values, like which face of the partner is up or how hard it is being squeezed right now, aren't broadcast. They're requested at the moment the program asks for them, with an 80ms wait for the answer and a default if none arrives. Radio only runs when it's actually needed, which keeps the batteries alive.</p>
+<p>Several pairs in the same room would interfere, so each pair can be given a group number from 0 to 255.</p>
+
+<h2>The extension</h2>
+<p>All of the above lives in a MakeCode extension called <a href="https://github.com/hideosasaki/mood-cube-blocks">mood-cube-blocks</a>. From the kid's program, no sensor threshold, no radio and no power management is visible. Only these five kinds of blocks are.</p>
+<figure>
+  <a href="blocks_all.png"><img src="blocks_all.png" alt="the five kinds of blocks the extension adds"></a>
+  <figcaption>Five categories: cubeTouch (input from Busubusu Cube), cubeLight, cubeVibe, cubeGrip (input from Niginigi Cylinder) and cubePair. The labels are in Japanese, since that is what the kid reads. Tap to see it larger.</figcaption>
+</figure>
+<p>The nice part is that each box can use the other one's blocks as if they were its own. Write "on pin stuck" in the program for Niginigi Cylinder and it runs when its partner Busubusu Cube gets poked. The word "radio" never appears.</p>
+<p>Busubusu Cube holds a few "apps", cycled with the A button (SELECT). For example: each poke lights one more LED on the 5×5 grid until the 25th clears the screen with a run of vibrations; a guessing game where the display names a face and poking the right one gives green and a scale; and a shooter with faces mapped to left, right and fire. The program for Niginigi Cylinder is tiny. Grip strength goes straight to vibration strength, and shaking it plays a sound.</p>
+
+<h2>Materials</h2>
+<p>The two boxes differ only in what hangs off P0. LED, vibration motor and power are identical, so the same parts appear in both lists.</p>
+<h3>Busubusu Cube</h3>
+<ul>
+  <li>micro:bit v2</li>
+  <li>A <a href="https://minoru-cube.com">Minoru Cube</a> clear display case, used as the enclosure</li>
+  <li>Aluminium mesh for five faces, the conductive layer</li>
+  <li>Metal bolts, holding the materials and serving as the ground contact</li>
+  <li>Pull-up resistor of a few hundred kΩ, holding P0 near 3V</li>
+  <li>Texture materials, sponge and the like, all non-conductive</li>
+  <li>A fork, for poking the faces</li>
+  <li>PL9823 full colour LED, driven from P2, NeoPixel compatible</li>
+  <li>Vibration motor, driven by PWM on P1</li>
+  <li>2SC1815 transistor and a 220Ω resistor to drive the motor; a micro:bit pin can't supply the current</li>
+  <li>1N4007 diode, flyback for the motor</li>
+  <li>3×AAA battery holder, 4.5V</li>
+</ul>
+
+<h3>Niginigi Cylinder</h3>
+<ul>
+  <li>micro:bit v2</li>
+  <li>Fabric and foam for the enclosure</li>
+  <li>LCX-300 conductive foam, the pressure sensor</li>
+  <li>Metal foil for the electrodes around the foam</li>
+  <li>1MΩ resistor, forming the divider with the sensor</li>
+  <li>NJU7043D op-amp buffering the divider into P0, with a 0.1µF capacitor on its supply</li>
+  <li>PL9823 full colour LED, driven from P2, NeoPixel compatible</li>
+  <li>Vibration motor, driven by PWM on P1</li>
+  <li>2SC1815 transistor and a 220Ω resistor to drive the motor</li>
+  <li>1N4007 diode, flyback for the motor</li>
+  <li>3×AAA battery holder, 4.5V</li>
+</ul>
+<p>The schematic and breadboard layout are on the <a href="https://github.com/hideosasaki/mood-cube-blocks/blob/main/docs/architecture.md">system overview page</a>. Don't pick a conductive texture material: holding the cube bare-handed would then produce exactly the same signal as poking it.</p>
+
+<footer>
+  <p>micro:bit Mood Cube / 2026<br>
+  Source and documentation: <a href="https://github.com/hideosasaki/mood-cube-blocks">github.com/hideosasaki/mood-cube-blocks</a></p>
+</footer>
+
+</body>
+</html>

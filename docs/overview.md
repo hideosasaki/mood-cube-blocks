@@ -4,7 +4,7 @@ micro:bit v2を内蔵したフィジェット作品。「触り心地」と「�
 
 このリポジトリは作品を支える3つのリポジトリのうち、ハードウェア抽象を担うMakeCode拡張機能。
 
-<img width="1631" height="915" alt="スクリーンショット 2026-08-03 9 25 09" src="https://github.com/user-attachments/assets/563aa093-8026-4dcf-b022-2f29739e7036" />
+![2つのキューブ](photo_cubes.jpg)
 
 ## 2つのキューブ
 
@@ -12,13 +12,13 @@ micro:bit v2を内蔵したフィジェット作品。「触り心地」と「�
 
 透明アクリル製 (約6cm角)。6面それぞれに異なる触感の素材を貼り、ピンを刺して触感を楽しむ。内部にmicro:bitとPL9823 (フルカラーLED) を仕込み、上を向いた面に応じて光や振動で反応する。受動的・静的な体験を担当する。
 
-<img width="1631" height="915" alt="スクリーンショット 2026-08-03 9 27 20" src="https://github.com/user-attachments/assets/57d639e4-f16b-41b8-946e-409bddeaa4f6" />
+![触感キューブ](photo_touch.jpg)
 
 ### 握りキューブ
 
 布製お手玉式 (約6cm角)。中にmicro:bitと圧力センサを仕込み、握りしめる強さに応じて光と振動が変化する。能動的・動的な体験を担当する。
 
-<img width="1631" height="915" alt="スクリーンショット 2026-08-03 9 26 06" src="https://github.com/user-attachments/assets/3f55df19-0997-4081-97e7-a97e488f1695" />
+![握りキューブ](photo_grip.jpg)
 
 ## このリポジトリの位置づけ
 
