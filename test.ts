@@ -36,53 +36,53 @@ function armTouch(): void {
 function runTests(): void {
     test("rawToStrength: at or below baseline returns 0", function () {
         assertEq(cubeGrip._rawToStrength(0), 0, "raw=0")
-        assertEq(cubeGrip._rawToStrength(125), 0, "raw=125 (= baseline)")
+        assertEq(cubeGrip._rawToStrength(65), 0, "raw=65 (= baseline)")
     })
 
     test("rawToStrength: at or above RAW_FULL returns 9", function () {
-        assertEq(cubeGrip._rawToStrength(349), 9, "raw=349")
+        assertEq(cubeGrip._rawToStrength(135), 9, "raw=135")
         assertEq(cubeGrip._rawToStrength(1023), 9, "raw=1023")
     })
 
     test("rawToStrength: just above baseline clamped to 1", function () {
-        assertEq(cubeGrip._rawToStrength(126), 1, "raw=126")
+        assertEq(cubeGrip._rawToStrength(66), 1, "raw=66")
     })
 
     test("rawToStrength: midpoint maps to 5", function () {
-        assertEq(cubeGrip._rawToStrength(237), 5, "raw=237")
+        assertEq(cubeGrip._rawToStrength(100), 5, "raw=100")
     })
 
-    test("rawToStrength: raw=175 maps to 2", function () {
-        assertEq(cubeGrip._rawToStrength(175), 2, "raw=175")
+    test("rawToStrength: raw=80 maps to 2", function () {
+        assertEq(cubeGrip._rawToStrength(80), 2, "raw=80")
     })
 
     test("hysteresis: 0 to 1 takes 3 stable samples", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
         assertEq(cubeGrip._testGetStrength(), 0, "after 1st sample")
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
         assertEq(cubeGrip._testGetStrength(), 0, "after 2nd sample")
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
         assertEq(cubeGrip._testGetStrength(), 1, "after 3rd sample (commit)")
     })
 
     test("hysteresis: 1 to 2 takes 2 stable samples", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
         assertEq(cubeGrip._testGetStrength(), 1, "setup: strength=1")
-        cubeGrip._testFeedSample(175)
+        cubeGrip._testFeedSample(80)
         assertEq(cubeGrip._testGetStrength(), 1, "after 1st rising sample")
-        cubeGrip._testFeedSample(175)
+        cubeGrip._testFeedSample(80)
         assertEq(cubeGrip._testGetStrength(), 2, "after 2nd rising sample (commit)")
     })
 
     test("hysteresis: 1 to 0 takes 4 stable samples (falling + crosses zero)", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
         assertEq(cubeGrip._testGetStrength(), 1, "setup: strength=1")
         cubeGrip._testFeedSample(50)
         assertEq(cubeGrip._testGetStrength(), 1, "after 1st falling")
@@ -96,9 +96,9 @@ function runTests(): void {
 
     test("hysteresis: candidate change resets stable counter", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(175)
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(80)
+        cubeGrip._testFeedSample(66)
         assertEq(cubeGrip._testGetCandidate(), 1, "candidate after flicker")
         assertEq(cubeGrip._testGetStableCount(), 1, "stable count reset")
         assertEq(cubeGrip._testGetStrength(), 0, "strength unchanged")
@@ -106,8 +106,8 @@ function runTests(): void {
 
     test("hysteresis: same-as-current sample clears candidate counter", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
         assertEq(cubeGrip._testGetStableCount(), 2, "ramping up")
         cubeGrip._testFeedSample(50)
         assertEq(cubeGrip._testGetStableCount(), 0, "raw maps to 0 = current strength, counter reset")
@@ -117,9 +117,9 @@ function runTests(): void {
         cubeGrip._testResetState()
         cubeGrip.onChange(function (s: number) { })
         assert(!cubeGrip._redeliverPending(), "no change yet")
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
         assert(cubeGrip._redeliverPending(), "strength 1 committed but not delivered")
         assert(cubeGrip._deliverChange(1), "first delivery passes")
         assert(!cubeGrip._redeliverPending(), "resolved after delivery")
@@ -128,24 +128,24 @@ function runTests(): void {
 
     test("changed redelivery: round trip while busy coalesces away", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
         cubeGrip._deliverChange(1)
-        cubeGrip._testFeedSample(175)
-        cubeGrip._testFeedSample(175)
+        cubeGrip._testFeedSample(80)
+        cubeGrip._testFeedSample(80)
         assert(cubeGrip._redeliverPending(), "strength 2 pending while handler busy")
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
         assert(!cubeGrip._redeliverPending(), "returned to delivered value, nothing to redeliver")
     })
 
     test("changed redelivery: putdown zero is redelivered too", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
-        cubeGrip._testFeedSample(126)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
+        cubeGrip._testFeedSample(66)
         cubeGrip._deliverChange(1)
         cubeGrip._setPickedUp(false)
         assertEq(cubeGrip._testGetStrength(), 0, "putdown forces strength 0")
@@ -189,9 +189,9 @@ function runTests(): void {
     test("calibration: raised baseline clears phantom strength", function () {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
-        assertEq(cubeGrip._rawToStrength(150), 1, "phantom strength before calibration")
-        cubeGrip._applyCalibration([150, 150, 150, 150, 150, 150])
-        assertEq(cubeGrip._rawToStrength(150), 0, "phantom cleared")
+        assertEq(cubeGrip._rawToStrength(80), 2, "phantom strength before calibration")
+        cubeGrip._applyCalibration([80, 80, 80, 80, 80, 80])
+        assertEq(cubeGrip._rawToStrength(80), 0, "phantom cleared")
     })
 
     test("pickup gate: samples while put down do not change strength", function () {
@@ -208,48 +208,48 @@ function runTests(): void {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 5; i++) cubeGrip._testFeedSample(180)
+        for (let i = 0; i < 5; i++) cubeGrip._testFeedSample(80)
         assertEq(cubeGrip._testGetStrength(), 0, "frozen before floor is established")
-        cubeGrip._testFeedSample(180)
-        assertEq(cubeGrip._testGetHandFloor(), 180, "floor = first window median")
+        cubeGrip._testFeedSample(80)
+        assertEq(cubeGrip._testGetHandFloor(), 80, "floor = first window median")
     })
 
     test("hand floor: relaxed hold above desk baseline reads 0", function () {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 12; i++) cubeGrip._testFeedSample(180)
-        assertEq(cubeGrip._testGetStrength(), 0, "hold preload 180 > baseline 125 but reads 0")
+        for (let i = 0; i < 12; i++) cubeGrip._testFeedSample(80)
+        assertEq(cubeGrip._testGetStrength(), 0, "hold preload 80 > baseline 65 but reads 0")
     })
 
     test("hand floor: squeeze from relaxed hold reads relative strength", function () {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
-        cubeGrip._testFeedSample(300)
-        cubeGrip._testFeedSample(300)
-        cubeGrip._testFeedSample(300)
-        assertEq(cubeGrip._testGetStrength(), 4, "raw 300 vs zero 260 (floor 180 + hand margin 80)")
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(20)
+        cubeGrip._testFeedSample(90)
+        cubeGrip._testFeedSample(90)
+        cubeGrip._testFeedSample(90)
+        assertEq(cubeGrip._testGetStrength(), 4, "raw 90 vs zero 50 (floor 20 + hand margin 30)")
     })
 
     test("hand floor: sustained grip keeps strength indefinitely", function () {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
-        for (let i = 0; i < 30; i++) cubeGrip._testFeedSample(300)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(20)
+        for (let i = 0; i < 30; i++) cubeGrip._testFeedSample(90)
         assertEq(cubeGrip._testGetStrength(), 4, "grip windows never raise the floor")
-        assertEq(cubeGrip._testGetHandFloor(), 180, "floor stays at pre-squeeze hold")
+        assertEq(cubeGrip._testGetHandFloor(), 20, "floor stays at pre-squeeze hold")
     })
 
     test("hand floor: release back to relaxed hold returns to 0", function () {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(300)
-        for (let i = 0; i < 4; i++) cubeGrip._testFeedSample(180)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(20)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(90)
+        for (let i = 0; i < 4; i++) cubeGrip._testFeedSample(20)
         assertEq(cubeGrip._testGetStrength(), 0, "back to hold level = 0")
     })
 
@@ -257,39 +257,39 @@ function runTests(): void {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(220)
-        assertEq(cubeGrip._testGetHandFloor(), 220, "initial floor from grab")
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
-        assertEq(cubeGrip._testGetHandFloor(), 180, "floor follows the loosest hold")
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(60)
+        assertEq(cubeGrip._testGetHandFloor(), 60, "initial floor from grab")
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(20)
+        assertEq(cubeGrip._testGetHandFloor(), 20, "floor follows the loosest hold")
     })
 
     test("hand floor: settled hold within margin reads 0 and floor catches up", function () {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(140)
-        assertEq(cubeGrip._testGetHandFloor(), 140, "floor from loose moment")
-        for (let i = 0; i < 12; i++) cubeGrip._testFeedSample(180)
-        assertEq(cubeGrip._testGetStrength(), 0, "hold 40 above floor stays 0")
-        assertEq(cubeGrip._testGetHandFloor(), 156, "floor rises 8 per window toward the hold")
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(20)
+        assertEq(cubeGrip._testGetHandFloor(), 20, "floor from loose moment")
+        for (let i = 0; i < 12; i++) cubeGrip._testFeedSample(40)
+        assertEq(cubeGrip._testGetStrength(), 0, "hold 20 above floor stays 0")
+        assertEq(cubeGrip._testGetHandFloor(), 36, "floor rises 8 per window toward the hold")
     })
 
     test("hand floor: upward follow stops at the hold median", function () {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(140)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(143)
-        assertEq(cubeGrip._testGetHandFloor(), 143, "capped at median, not floor + step")
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(20)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(23)
+        assertEq(cubeGrip._testGetHandFloor(), 23, "capped at median, not floor + step")
     })
 
     test("hand floor: upward follow does not eat a slow squeeze", function () {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(140)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(20)
         for (let w = 1; w <= 7; w++) {
-            for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(140 + 20 * w)
+            for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(20 + 20 * w)
         }
         assert(cubeGrip._testGetStrength() >= 1, "20/窓の握り込みは8/窓の追従を振り切って1に届く")
     })
@@ -298,10 +298,10 @@ function runTests(): void {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(140)
-        assertEq(cubeGrip._testGetHandFloor(), 140, "floor ratcheted down by the loose moment")
-        for (let i = 0; i < 12; i++) cubeGrip._testFeedSample(180)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(40)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(20)
+        assertEq(cubeGrip._testGetHandFloor(), 20, "floor ratcheted down by the loose moment")
+        for (let i = 0; i < 12; i++) cubeGrip._testFeedSample(40)
         assertEq(cubeGrip._testGetStrength(), 0, "resumed hold reads 0, not 1")
     })
 
@@ -309,7 +309,7 @@ function runTests(): void {
         cubeGrip._testResetState()
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
-        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(180)
+        for (let i = 0; i < 6; i++) cubeGrip._testFeedSample(80)
         cubeGrip._setPickedUp(false)
         cubeGrip._setPickedUp(true)
         assertEq(cubeGrip._testGetHandFloor(), -1, "floor cleared for the new session")
@@ -317,9 +317,9 @@ function runTests(): void {
 
     test("pickup gate: putdown clears active strength to 0", function () {
         cubeGrip._testResetState()
-        cubeGrip._testFeedSample(300)
-        cubeGrip._testFeedSample(300)
-        cubeGrip._testFeedSample(300)
+        cubeGrip._testFeedSample(120)
+        cubeGrip._testFeedSample(120)
+        cubeGrip._testFeedSample(120)
         assertEq(cubeGrip._testGetStrength(), 7, "setup: strength=7")
         cubeGrip._setPickedUp(false)
         assertEq(cubeGrip._testGetStrength(), 0, "strength cleared on putdown")
@@ -333,7 +333,7 @@ function runTests(): void {
         cubeGrip._testFeedSample(144)
         cubeGrip._testFeedSample(145)
         cubeGrip._testFeedSample(148)
-        assertEq(cubeGrip._testGetRawZeroMax(), 125, "baseline unchanged before buffer fills")
+        assertEq(cubeGrip._testGetRawZeroMax(), 65, "baseline unchanged before buffer fills")
         cubeGrip._testFeedSample(149)
         assertEq(cubeGrip._testGetRawZeroMax(), 165, "median (偶数個は上側) 145 + margin 20 after 6 samples")
     })
@@ -349,7 +349,7 @@ function runTests(): void {
         cubeGrip._testFeedSample(103)
         cubeGrip._testFeedSample(104)
         cubeGrip._testFeedSample(105)
-        assertEq(cubeGrip._testGetRawZeroMax(), 125, "3 samples after re-putdown, buffer not full")
+        assertEq(cubeGrip._testGetRawZeroMax(), 65, "3 samples after re-putdown, buffer not full")
     })
 
     test("putdown tracking: not active while picked up", function () {
@@ -360,7 +360,7 @@ function runTests(): void {
         cubeGrip._testFeedSample(100)
         cubeGrip._testFeedSample(100)
         cubeGrip._testFeedSample(100)
-        assertEq(cubeGrip._testGetRawZeroMax(), 125, "baseline untouched while picked up")
+        assertEq(cubeGrip._testGetRawZeroMax(), 65, "baseline untouched while picked up")
     })
 
     test("touch ref: seeded with warmup median at last warmup sample", function () {
@@ -511,8 +511,8 @@ function runTests(): void {
 
     test("grip wake check: press sample relative to baseline", function () {
         cubeGrip._testResetState()
-        assert(cubeGrip._isPressSample(126) === true, "above default baseline 125")
-        assert(cubeGrip._isPressSample(125) === false, "at baseline")
+        assert(cubeGrip._isPressSample(66) === true, "above default baseline 65")
+        assert(cubeGrip._isPressSample(65) === false, "at baseline")
     })
 
     test("classifyAccel: norm below min returns 0", function () {

@@ -1,0 +1,32 @@
+{
+  "date": "2026-08-30",
+  "subject": "使用者 (11歳)",
+  "device": "握りキューブ (円筒 φ85 x H85、LCX-300 外周巻き、1MΩ分圧)",
+  "firmware": "拡張テストビルド (test.ts 生ログ、P0 50Hz)",
+  "power": "USB接続",
+  "raw_log": "2026-08-30-raw-grip-child.txt",
+  "note": "治具を使わず、握る位置は本人の申告で選んだ。値はすべて0.5秒窓の中央値。位置A/B/Cは本人が選んだ持ち方で、Cが本人の申告する最も反応しにくい持ち方",
+  "segments": [
+    { "label": "rest-desk", "seconds": 5, "median": 43, "min": 42, "max": 45,
+      "note": "机に置いた状態。自重ぶんの圧がかかっている。2026-07-16の組み立て直後は65、その後半日で103→144へ締まる方向にドリフトしていた。今回は逆に大きく緩んでおり、スポンジのpermanent setと整合する" },
+    { "label": "hold-natural", "seconds": 28, "median": 12, "p95": 21, "max": 29,
+      "window_median_min": 5, "window_median_max": 24,
+      "note": "握らず自然に持ち回す。HAND_MARGINの根拠。ファームが見る6サンプル窓中央値の振れ幅は19" },
+    { "label": "squeeze-light", "seconds": 34, "peaks": [52, 50, 67, 76, 110],
+      "note": "そっと握る×5回。窓中央値のピーク" },
+    { "label": "max-posA-1", "peak": 257, "instant_max": 279 },
+    { "label": "max-posB-1", "peak": 198, "instant_max": 218 },
+    { "label": "max-posC-1", "peak": 159, "instant_max": 183,
+      "note": "本人が最も反応しにくいと申告した持ち方" },
+    { "label": "max-posA-2", "peak": 218, "instant_max": 245,
+      "note": "対照点。posA-1の257から15%低下しており、握るたびに下がる成分がある。同時刻帯のposC 159との差27%が位置差の実力" }
+  ],
+  "decision": {
+    "RAW_FULL": { "from": 349, "to": 135,
+      "basis": "最悪位置Cの全力159、在手ゼロ点8+HAND_MARGIN30=38からのスパン121に安全率0.8" },
+    "HAND_MARGIN": { "from": 80, "to": 30,
+      "basis": "hold-naturalの窓中央値の振れ幅19に余裕を足した値" },
+    "RAW_ZERO_MAX_DEFAULT": { "from": 125, "to": 65,
+      "basis": "rest-desk 43 + BASELINE_MARGIN 20" }
+  }
+}
